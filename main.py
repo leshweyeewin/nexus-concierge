@@ -212,8 +212,10 @@ dev_agent = Agent(
     instruction=(
         "You are the Dev-Relops Agent of NexusConcierge. Parse AI event agendas and match speaker "
         "interests to active GitHub repos and frameworks. Ground your responses in local codebase data "
-        "by querying local directories or code blocks via the git-server tools. Remember to check dynamic "
-        "event profiles to locate developers or creators you have met before."
+        "by querying local directories or code blocks via the git-server tools.\n"
+        "Monitor developer communities, invites, and agendas from the Telegram channels 'Stack Community', "
+        "'Geeks Social', 'Google Developer Space Singapore', 'GeeksHacking Community', the 'Meetup app', and 'Gmail' via fetch_dev_event_feeds.\n"
+        "Remember to check dynamic event profiles to locate developers or creators you have met before."
     ),
     tools=[git_toolset, manage_event_profiles, match_speaker_to_repos]
 )
@@ -223,8 +225,10 @@ tiktok_agent = Agent(
     model="gemini-3.1-flash-lite",
     instruction=(
         "You are the Creative Copywriter Agent. Generate creative hooks and TikTok scripts based on trending "
-        "hashtags, keyword performance, and product datasets. Always adapt script hooks to the historical "
-        "affiliate brand voice/style memory in your context."
+        "hashtags, keyword performance, and product datasets. Sourced from the TikTok App, Gmail, and the Telegram "
+        "groups: 'TTS Beauty Creator Community', 'Tiktok Shop SG New Creators', 'Tiktok Shop SG Affaliate Creator Community', "
+        "'SG Tiktok Live Creators Community', and 'Tiktok Shop SG Video Brand Opportunities' via fetch_tiktok_creator_feeds.\n"
+        "Always adapt script hooks to the historical affiliate brand voice/style memory in your context."
     ),
     tools=[tiktok_toolset, manage_style_memory]
 )
@@ -234,9 +238,10 @@ trading_agent = Agent(
     model="gemini-3.1-flash-lite",
     instruction=(
         "You are the Quantitative Risk Agent. Monitor financial market indicators, analyze price feeds, and "
-        "perform risk calculations checking setup limits. HARD RULE: You have ZERO financial autonomy and "
-        "cannot place real trades. Warn the user if a setup violates rules. Execution remains strictly "
-        "locked behind Human-in-the-Loop validation."
+        "perform risk calculations checking setup limits on MooMoo API, publicly available APIs, Tiger Brokers, "
+        "and MooMoo platforms. You analyze Options chains (via get_options_chain) and MooMoo/Tiger sentiment indicators (via get_moomoo_tiger_indicators).\n"
+        "HARD RULE: You have ZERO financial autonomy and cannot place real trades. Warn the user if a setup violates rules. "
+        "Execution remains strictly locked behind Human-in-the-Loop validation."
     ),
     tools=[market_toolset, get_trading_rules, check_risk_setup]
 )
@@ -302,7 +307,10 @@ async def init_session(db_service: DatabaseSessionService):
             ],
             "trading_parameters": {
                 "max_loss_limit": 0.02, # 2% max loss
-                "preferred_indicator_triggers": ["RSI_14 < 30 (oversold)", "RSI_14 > 70 (overbought)"]
+                "preferred_indicator_triggers": ["RSI_14 < 30 (oversold)", "RSI_14 > 70 (overbought)"],
+                "platforms": ["MooMoo API", "Tiger Brokers Options"],
+                "allowed_instruments": ["Equity Options", "Index Options"],
+                "max_options_premium_allocation": 0.05 # Max 5% of portfolio premium on options
             },
             "calendar_locks": [],
             "daily_briefing_count": 0
@@ -345,7 +353,9 @@ async def main_async(user_payload, db_session_service):
             async for chunk in response_stream:
                 text = ""
                 # ADK Events expose text via content.parts
-                if hasattr(chunk, "content") and chunk.content and hasattr(chunk.content, "parts"):
+                if hasattr(chunk, "output") and chunk.output is not None:
+                    text = str(chunk.output)
+                elif hasattr(chunk, "content") and chunk.content and hasattr(chunk.content, "parts"):
                     for part in chunk.content.parts:
                         if hasattr(part, "text") and part.text:
                             text += part.text
