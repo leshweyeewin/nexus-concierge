@@ -383,8 +383,6 @@ async def main_async(user_payload, db_session_service, session_id="local_dev_tes
         auto_create_session=True
     )
 
-    print("NexusConcierge Output: ", end="", flush=True)
-
     MAX_RETRIES = 4
     RETRY_DELAY_S = 35  # Free tier 429s suggest retrying after ~30s
 
@@ -409,24 +407,24 @@ async def main_async(user_payload, db_session_service, session_id="local_dev_tes
                 elif isinstance(chunk, str):
                     text = chunk
                 if text:
-                    print(mask_credentials(text), end="", flush=True)
+                    yield mask_credentials(text)
             break  # Success — exit retry loop
         except Exception as e:
             err = str(e)
             if any(term in err for term in ["429", "503", "RESOURCE_EXHAUSTED", "UNAVAILABLE"]):
                 if attempt < MAX_RETRIES:
                     wait = RETRY_DELAY_S * attempt
-                    print(f"\n[Rate limit or service overload hit. Retrying in {wait}s... attempt {attempt}/{MAX_RETRIES}]", flush=True)
+                    yield f"\n[Rate limit or service overload hit. Retrying in {wait}s... attempt {attempt}/{MAX_RETRIES}]"
                     await asyncio.sleep(wait)
                 else:
-                    print(f"\n[ERROR] Request failed after {MAX_RETRIES} retries due to quota or overload.")
+                    yield f"\n[ERROR] Request failed after {MAX_RETRIES} retries due to quota or overload."
                     raise
             else:
                 raise
 
-    print("\n\n[System] Execution Complete.")
-
 if __name__ == "__main__":
+    if hasattr(sys.stdout, 'reconfigure'):
+        sys.stdout.reconfigure(errors='replace')
     print("[System] NexusConcierge System Pipeline Compiled Successfully.")
     
     # Check if a custom command line argument is passed, otherwise use default test input
@@ -446,4 +444,11 @@ if __name__ == "__main__":
     )
     
     db_session_service = DatabaseSessionService("sqlite+aiosqlite:///nexus_sessions.db")
-    asyncio.run(main_async(user_payload, db_session_service))
+    
+    async def run_cli():
+        print("NexusConcierge Output: ", end="", flush=True)
+        async for chunk in main_async(user_payload, db_session_service):
+            print(chunk, end="", flush=True)
+        print("\n\n[System] Execution Complete.")
+        
+    asyncio.run(run_cli())

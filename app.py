@@ -82,45 +82,17 @@ def fetch_session_state(user_id, session_id):
 # Async generator for executing the multi-agent workflow
 async def run_agent_workflow(user_query: str, session_id: str, user_id: str):
     from google.genai.types import Content, Part
-    from main import init_session, nexus_flow, mask_credentials
-    from google.adk import Runner
+    from main import main_async
     from google.adk.sessions.database_session_service import DatabaseSessionService
     
     db_session_service = DatabaseSessionService("sqlite+aiosqlite:///nexus_sessions.db")
-    await init_session(db_session_service, user_id=user_id, session_id=session_id)
-    
-    runtime_runner = Runner(
-        app_name="NexusConciergeApp",
-        agent=nexus_flow,
-        session_service=db_session_service,
-        auto_create_session=True
-    )
-    
     user_payload = Content(
         role="user",
         parts=[Part.from_text(text=user_query)]
     )
     
-    response_stream = runtime_runner.run_async(
-        new_message=user_payload,
-        session_id=session_id,
-        user_id=user_id
-    )
-    
-    async for chunk in response_stream:
-        text = ""
-        if hasattr(chunk, "output") and chunk.output is not None:
-            text = str(chunk.output)
-        elif hasattr(chunk, "content") and chunk.content and hasattr(chunk.content, "parts"):
-            for part in chunk.content.parts:
-                if hasattr(part, "text") and part.text:
-                    text += part.text
-        elif hasattr(chunk, "text") and chunk.text:
-            text = chunk.text
-        elif isinstance(chunk, str):
-            text = chunk
-        if text:
-            yield mask_credentials(text)
+    async for chunk in main_async(user_payload, db_session_service, session_id=session_id, user_id=user_id):
+        yield chunk
 
 # Convert async generator to sync generator for Streamlit consumption
 def get_workflow_generator(user_query, session_id, user_id):
