@@ -29,10 +29,21 @@ st.markdown("""
 
 html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
 
-.stApp { background-color: #0d1117; color: #c9d1d9; }
-.main  { background-color: #0d1117; color: #c9d1d9; }
+* { scrollbar-width: thin; scrollbar-color: #30363d transparent; }
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-thumb { background: #30363d; border-radius: 8px; }
+::-webkit-scrollbar-thumb:hover { background: #484f58; }
+
+.stApp {
+    background:
+        radial-gradient(circle at 15% 0%, rgba(31,111,235,0.08) 0%, transparent 35%),
+        radial-gradient(circle at 85% 10%, rgba(139,148,158,0.05) 0%, transparent 40%),
+        #0d1117;
+    color: #c9d1d9;
+}
+.main  { color: #c9d1d9; }
 section[data-testid="stSidebar"] {
-    background-color: #161b22;
+    background-color: #10151c;
     border-right: 1px solid #21262d;
 }
 
@@ -40,40 +51,60 @@ h1, h2, h3 {
     color: #58a6ff !important;
     font-family: 'Outfit', 'Inter', sans-serif;
     font-weight: 700;
+    letter-spacing: -0.01em;
 }
 
 /* Tabs */
 .stTabs [data-baseweb="tab-list"]      { gap: 6px; background: transparent; }
 .stTabs [data-baseweb="tab"]           { background:#161b22; border:1px solid #30363d;
-                                         border-radius:6px 6px 0 0; color:#8b949e;
-                                         padding:8px 18px; font-weight:500; }
+                                         border-radius:8px 8px 0 0; color:#8b949e;
+                                         padding:9px 20px; font-weight:500;
+                                         transition: all .15s ease; }
+.stTabs [data-baseweb="tab"]:hover     { color:#c9d1d9; background:#1c2129; }
 .stTabs [aria-selected="true"]         { background:#21262d !important; color:#58a6ff !important;
-                                         border-bottom:2px solid #58a6ff !important; }
+                                         border-bottom:2px solid #58a6ff !important;
+                                         box-shadow: 0 -2px 12px rgba(88,166,255,0.12); }
 
 /* Buttons */
 .stButton>button { background:#21262d; color:#c9d1d9; border:1px solid #30363d;
-                   border-radius:6px; font-weight:500; transition:all .2s; }
-.stButton>button:hover { background:#30363d; border-color:#8b949e; color:#fff; }
+                   border-radius:8px; font-weight:500; transition:all .15s ease; }
+.stButton>button:hover { background:#30363d; border-color:#58a6ff; color:#fff;
+                          box-shadow: 0 0 0 3px rgba(88,166,255,0.15); transform: translateY(-1px); }
+.stButton>button:active { transform: translateY(0); }
+
+/* Inputs */
+.stTextInput>div>div>input, .stTextArea textarea {
+    background:#161b22 !important; border:1px solid #30363d !important;
+    border-radius:8px !important; color:#e6edf3 !important;
+    transition: border-color .15s ease;
+}
+.stTextInput>div>div>input:focus, .stTextArea textarea:focus {
+    border-color:#58a6ff !important; box-shadow: 0 0 0 3px rgba(88,166,255,0.15) !important;
+}
 
 /* ── Custom cards ─────────────────────────────────────────────────────── */
 .nc-card {
     background: #161b22;
     border: 1px solid #21262d;
-    border-radius: 10px;
+    border-radius: 12px;
     padding: 14px 18px;
     margin-bottom: 10px;
+    transition: border-color .15s ease, transform .15s ease;
 }
+.nc-card:hover { border-color:#30363d; }
 .nc-cal-card {
     background: linear-gradient(135deg, #0d1b2a 0%, #161b22 100%);
     border: 1px solid #1f6feb;
     border-left: 4px solid #58a6ff;
-    border-radius: 10px;
+    border-radius: 12px;
     padding: 14px 18px;
     margin-bottom: 10px;
+    transition: transform .15s ease, box-shadow .15s ease;
 }
+.nc-cal-card:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.35); }
 .nc-cal-card h4 { color: #e6edf3 !important; margin:0 0 4px 0; font-size:15px; }
 .nc-cal-card .meta { color: #8b949e; font-size: 12px; margin-top:4px; }
-.nc-cal-card .badge {
+.nc-cal-card .badge, .badge {
     display: inline-block;
     background: #1f6feb22;
     color: #58a6ff;
@@ -86,13 +117,15 @@ h1, h2, h3 {
 }
 
 .nc-kpi {
-    background: #161b22;
+    background: linear-gradient(160deg, #171d27 0%, #161b22 100%);
     border: 1px solid #21262d;
-    border-radius: 10px;
-    padding: 16px;
+    border-radius: 12px;
+    padding: 18px 16px;
     text-align: center;
+    transition: transform .15s ease, border-color .15s ease;
 }
-.nc-kpi .val  { font-size: 28px; font-weight: 700; color: #58a6ff; }
+.nc-kpi:hover { transform: translateY(-2px); border-color:#30363d; }
+.nc-kpi .val  { font-size: 30px; font-weight: 700; color: #58a6ff; font-family:'Outfit',sans-serif; }
 .nc-kpi .lbl  { font-size: 12px; color: #8b949e; margin-top: 4px; }
 .nc-kpi .delta-pos { color: #3fb950; font-size: 12px; }
 .nc-kpi .delta-neg { color: #f85149; font-size: 12px; }
@@ -128,6 +161,13 @@ h1, h2, h3 {
             border-radius:0 6px 6px 0; padding:8px 12px; margin-bottom:8px;
             font-style:italic; color:#c9d1d9; font-size:13px; }
 .sb-conv  { font-size:11px; color:#3fb950; margin-top:4px; }
+
+/* Metrics */
+[data-testid="stMetric"] {
+    background:#161b22; border:1px solid #21262d; border-radius:12px;
+    padding:12px 16px; transition: border-color .15s ease;
+}
+[data-testid="stMetric"]:hover { border-color:#30363d; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -185,14 +225,15 @@ def _fmt_dt(iso_str: str, is_all_day: bool) -> str:
 
 # ── Header ─────────────────────────────────────────────────────────────────────
 st.markdown("""
-<div style="display:flex;align-items:center;gap:12px;padding-bottom:6px;">
-  <span style="font-size:36px;">🌟</span>
+<div style="display:flex;align-items:center;gap:14px;padding-bottom:6px;">
+  <span style="font-size:38px;filter:drop-shadow(0 0 10px rgba(88,166,255,0.35));">🌟</span>
   <div>
-    <h1 style="margin:0;font-size:28px;font-family:'Outfit',sans-serif;">NexusConcierge OS</h1>
+    <h1 style="margin:0;font-size:29px;font-family:'Outfit',sans-serif;">NexusConcierge OS</h1>
     <p style="margin:0;color:#8b949e;font-size:13px;">Cross-Domain Multi-Agent Life Engine &nbsp;·&nbsp; Google ADK &amp; FastMCP</p>
   </div>
 </div>
-<hr style="border:none;border-top:1px solid #21262d;margin:10px 0 16px;">
+<div style="height:1px;margin:12px 0 16px;
+            background:linear-gradient(90deg, #1f6feb 0%, #21262d 40%, transparent 100%);"></div>
 """, unsafe_allow_html=True)
 
 # ── Sidebar — Demo Panel ───────────────────────────────────────────────────────
@@ -293,10 +334,10 @@ with st.sidebar:
 
 
 # ── Main Tabs ──────────────────────────────────────────────────────────────────
-tab_chat, tab_cal, tab_tiktok, tab_dag, tab_mcp = st.tabs([
+tab_chat, tab_events, tab_tiktok, tab_dag, tab_mcp = st.tabs([
     "💬 Agent Chat",
-    "📅 Calendar",
-    "🎵 TikTok Dashboard",
+    "🗓️ Events Hub",
+    "🎵 TikTok Studio",
     "📊 Workflow DAG",
     "📂 MCP Servers",
 ])
@@ -312,10 +353,9 @@ with tab_chat:
     if "messages" not in st.session_state:
         st.session_state.messages = []
 
-    # Auto-fire quick prompts clicked from sidebar
-    if "quick_prompt" in st.session_state and st.session_state.quick_prompt:
-        _qp = st.session_state.pop("quick_prompt")
-        st.session_state.messages.append({"role": "user", "content": _qp})
+    # A quick-prompt clicked from the sidebar takes priority over typed input this run.
+    # Pop it before rendering history so it doesn't get shown twice.
+    incoming_prompt = st.session_state.pop("quick_prompt", None)
 
     # Chat history
     chat_area = st.container()
@@ -324,14 +364,17 @@ with tab_chat:
             with st.chat_message(msg["role"], avatar="🌟" if msg["role"] == "assistant" else "🧑"):
                 st.markdown(msg["content"])
 
-    if prompt := st.chat_input("Enter your request here…"):
+    typed_prompt = st.chat_input("Enter your request here…")
+    prompt = incoming_prompt or typed_prompt
+
+    if prompt:
         st.session_state.messages.append({"role": "user", "content": prompt})
         with st.chat_message("user", avatar="🧑"):
             st.markdown(prompt)
 
+        full_response = ""
         with st.chat_message("assistant", avatar="🌟"):
             placeholder  = st.empty()
-            full_response = ""
             with st.spinner("Orchestrator routing tasks…"):
                 try:
                     for chunk in get_workflow_generator(prompt, session_id, user_id):
@@ -347,249 +390,391 @@ with tab_chat:
 
 
 # ════════════════════════════════════════════════════════════════════════════════
-# TAB 2 — GOOGLE CALENDAR
+# TAB 2 — EVENTS HUB (Google Calendar + Gmail + Telegram/Community Feeds)
 # ════════════════════════════════════════════════════════════════════════════════
-with tab_cal:
-    st.subheader("📅 Google Calendar — Upcoming Events")
+with tab_events:
+    st.subheader("🗓️ Events Hub")
+    st.caption("Everything DevRelopsAgent tracks in one place: Google Calendar, Gmail invites, "
+               "and live Singapore dev-community feeds (Telegram, Meetup, and more).")
+    st.markdown("---")
 
-    # Refresh button
-    col_hdr, col_btn = st.columns([6, 1])
+    from google_calendar_helper import (
+        fetch_calendar_events, credentials_available, run_oauth_flow,
+        DEV_COLOR_ID, TRADING_COLOR_ID,
+    )
+
+    st.markdown("#### 📅 Google Calendar — Upcoming Events")
+    col_t1, col_t2, col_btn = st.columns([3, 3, 1])
+    with col_t1:
+        dev_on = st.toggle("🟢 Dev Events", value=True, key="cal_dev_on")
+    with col_t2:
+        trading_on = st.toggle("🫒 Trading Events", value=True, key="cal_trading_on")
     with col_btn:
-        refresh = st.button("🔄 Refresh", key="cal_refresh")
+        refresh = st.button("🔄 Refresh", key="cal_refresh", use_container_width=True)
 
-    # Cache events in session state
-    if "cal_events" not in st.session_state or refresh:
-        st.session_state.cal_events    = None
-        st.session_state.cal_error     = None
-        st.session_state.cal_no_creds  = False
+    active_colors = set()
+    if dev_on:
+        active_colors.add(DEV_COLOR_ID)
+    if trading_on:
+        active_colors.add(TRADING_COLOR_ID)
+    # Neither toggle on -> no color filter, show everything.
+    colors_param = active_colors or None
 
-        try:
-            from google_calendar_helper import fetch_calendar_events, credentials_available
-            if not credentials_available():
-                st.session_state.cal_no_creds = True
-            else:
-                st.session_state.cal_events = fetch_calendar_events(max_results=20)
-        except FileNotFoundError as e:
-            st.session_state.cal_no_creds = True
-        except Exception as e:
-            st.session_state.cal_error = str(e)
+    # Fetch (never blocks on interactive auth — see google_calendar_helper.py).
+    # Re-fetch whenever Refresh is clicked or either toggle changes.
+    fetch_key = (20, tuple(sorted(active_colors)))
+    if "cal_result" not in st.session_state or refresh or st.session_state.get("cal_fetch_key") != fetch_key:
+        st.session_state.cal_result    = fetch_calendar_events(max_results=20, colors=colors_param)
+        st.session_state.cal_fetch_key = fetch_key
 
-    # ── Render state ───────────────────────────────────────────────────────────
-    if st.session_state.get("cal_no_creds"):
-        st.markdown("""
+    result      = st.session_state.cal_result
+    events      = result["events"]
+    is_simulated = result["is_simulated"]
+
+    # ── Connection status banner ─────────────────────────────────────────────
+    if is_simulated:
+        banner_col, action_col = st.columns([5, 2])
+        with banner_col:
+            st.markdown("""
 <div class="nc-card" style="border-color:#f0883e;border-left:4px solid #f0883e;">
-  <h4 style="color:#f0883e;margin:0 0 8px 0;">🔑 Google Calendar Not Connected</h4>
-  <p style="color:#c9d1d9;font-size:13px;margin:0 0 10px 0;">
-    To see your real Google Calendar events, authorise this app once:
-  </p>
-  <ol style="color:#8b949e;font-size:13px;line-height:2;">
-    <li>Go to <strong>Google Cloud Console</strong> → APIs &amp; Services → Credentials</li>
-    <li>Create an <strong>OAuth 2.0 Client ID</strong> (Desktop App)</li>
-    <li>Download it and rename to <code>credentials.json</code>, place in project root</li>
-    <li>Run: <code>python mcp_servers.py --server events</code> once — a browser will open for auth</li>
-    <li>A <code>token.json</code> file will be saved — come back and click <strong>Refresh</strong></li>
-  </ol>
+  <span class="badge" style="background:#f0883e22;color:#f0883e;border-color:#f0883e55;">🔌 SIMULATED</span>
+  <span style="color:#c9d1d9;font-size:13px;">Not connected to your real Google Calendar — showing demo events below.</span>
 </div>""", unsafe_allow_html=True)
+        with action_col:
+            if credentials_available():
+                if st.button("🔗 Connect Google Calendar", key="cal_connect", use_container_width=True):
+                    try:
+                        with st.spinner("Opening browser for Google sign-in…"):
+                            run_oauth_flow()
+                        st.session_state.cal_result = fetch_calendar_events(max_results=20, colors=colors_param)
+                        st.success("Connected! Loading your real calendar…")
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"Authorisation failed: {e}")
+            else:
+                st.button("🔗 Connect (needs credentials.json)", key="cal_connect_disabled",
+                          use_container_width=True, disabled=True)
 
-    elif st.session_state.get("cal_error"):
-        st.error(f"Calendar API error: {st.session_state.cal_error}")
+        with st.expander("ℹ️ How to connect your real Google Calendar", expanded=False):
+            st.markdown("""
+1. Go to **Google Cloud Console** → APIs & Services → Credentials
+2. Create an **OAuth 2.0 Client ID** (Desktop App)
+3. Download it and save as `credentials.json` in the project root
+4. Click **🔗 Connect Google Calendar** above — a browser tab opens for sign-in
+5. A `token.json` is saved locally and future loads use your real calendar
 
+**Color tags**: open an event in Google Calendar → the color-swatch icon → pick
+**Basil** (deep green) for 🟢 **Dev Events**, or **Sage** (pistachio) for 🫒
+**Trading Events**. Toggle either category above, or turn both off to see everything.
+""")
+        if result.get("error"):
+            with st.expander("Debug: last connection error", expanded=False):
+                st.code(result["error"])
     else:
-        events = st.session_state.get("cal_events") or []
-
-        # Summary bar
-        today     = datetime.date.today()
-        this_week = sum(1 for e in events if e.get("start") and
-                        datetime.date.fromisoformat(e["start"][:10]) <= today + datetime.timedelta(days=7))
-
-        m1, m2, m3 = st.columns(3)
-        m1.metric("Total Upcoming", len(events))
-        m2.metric("This Week",      this_week)
-        m3.metric("All-Day Events", sum(1 for e in events if e.get("is_all_day")))
-
-        st.markdown("---")
-
-        if not events:
-            st.info("No upcoming events found in your Google Calendar.")
+        if dev_on and trading_on:
+            conn_note = " · filtered to 🟢 Dev + 🫒 Trading Events"
+        elif dev_on:
+            conn_note = " · filtered to 🟢 Dev Events only"
+        elif trading_on:
+            conn_note = " · filtered to 🫒 Trading Events only"
         else:
-            for ev in events:
-                is_all_day = ev.get("is_all_day", False)
-                start_fmt  = _fmt_dt(ev.get("start", ""), is_all_day)
-                end_fmt    = _fmt_dt(ev.get("end",   ""), is_all_day)
-                badge_txt  = "All Day" if is_all_day else start_fmt.split()[-1]  # show time
-                loc_html   = f'<div class="meta">📍 {ev["location"]}</div>' if ev.get("location") else ""
-                desc_html  = (
-                    f'<div class="meta" style="margin-top:4px;font-style:italic;">'
-                    f'{ev["description"][:100]}{"…" if len(ev.get("description",""))>100 else ""}</div>'
-                ) if ev.get("description") else ""
-                link_html  = (
-                    f'<a href="{ev["link"]}" target="_blank" '
-                    f'style="font-size:11px;color:#58a6ff;text-decoration:none;">🔗 Open in Google Calendar</a>'
-                ) if ev.get("link") else ""
+            conn_note = " · showing all events"
+        st.markdown(f"""
+<span class="badge" style="background:#3fb95022;color:#3fb950;border-color:#3fb95055;">✅ CONNECTED</span>
+<span style="color:#8b949e;font-size:12px;">Showing live events from your Google Calendar{conn_note}</span>
+""", unsafe_allow_html=True)
 
-                st.markdown(f"""
-<div class="nc-cal-card">
-  <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:8px;">
-    <div>
-      <span class="badge">{'📅 All Day' if is_all_day else '🕐 ' + badge_txt}</span>
-      <h4>{ev.get('summary','Untitled')}</h4>
-      <div class="meta">🗓️ {start_fmt} → {end_fmt}</div>
-      {loc_html}
-      {desc_html}
-    </div>
-    <div style="padding-top:4px;">{link_html}</div>
+    st.markdown("---")
+
+    # Summary bar
+    today     = datetime.date.today()
+    this_week = sum(1 for e in events if e.get("start") and
+                    datetime.date.fromisoformat(e["start"][:10]) <= today + datetime.timedelta(days=7))
+
+    m1, m2, m3 = st.columns(3)
+    m1.metric("Total Upcoming", len(events))
+    m2.metric("This Week",      this_week)
+    m3.metric("All-Day Events", sum(1 for e in events if e.get("is_all_day")))
+
+    st.markdown("---")
+
+    if not events:
+        if colors_param and not is_simulated:
+            st.info("No matching color-tagged events found. Color-tag an event in Google "
+                     "Calendar (Basil for Dev, Sage for Trading), or turn off both toggles "
+                     "above to see all events.")
+        else:
+            st.info("No upcoming events found in your Google Calendar.")
+    else:
+        for ev in events:
+            is_all_day = ev.get("is_all_day", False)
+            start_fmt  = _fmt_dt(ev.get("start", ""), is_all_day)
+            end_fmt    = _fmt_dt(ev.get("end",   ""), is_all_day)
+            badge_txt  = "All Day" if is_all_day else start_fmt.split()[-1]  # show time
+            loc_html   = f'<div class="meta">📍 {ev["location"]}</div>' if ev.get("location") else ""
+            desc_html  = (
+                f'<div class="meta" style="margin-top:4px;font-style:italic;">'
+                f'{ev["description"][:100]}{"…" if len(ev.get("description",""))>100 else ""}</div>'
+            ) if ev.get("description") else ""
+            link_html  = (
+                f'<a href="{ev["link"]}" target="_blank" '
+                f'style="font-size:11px;color:#58a6ff;text-decoration:none;">🔗 Open in Google Calendar</a>'
+            ) if ev.get("link") else ""
+
+            is_dev      = ev.get("color_id") == DEV_COLOR_ID
+            is_trading  = ev.get("color_id") == TRADING_COLOR_ID
+            category_html = ""
+            border_style  = ""
+            if is_dev:
+                category_html = ('<span class="badge" style="background:#3fb95022;color:#3fb950;'
+                                  'border-color:#3fb95055;">🟢 Dev Event</span>')
+                border_style  = ' style="border-left-color:#3fb950;"'
+            elif is_trading:
+                category_html = ('<span class="badge" style="background:#b4e19722;color:#b4e197;'
+                                  'border-color:#b4e19755;">🫒 Trading Event</span>')
+                border_style  = ' style="border-left-color:#b4e197;"'
+
+            card_html = (
+                f'<div class="nc-cal-card"{border_style}>'
+                '<div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:8px;">'
+                '<div>'
+                f'<span class="badge">{"📅 All Day" if is_all_day else "🕐 " + badge_txt}</span>'
+                f'{category_html}'
+                f'<h4>{ev.get("summary", "Untitled")}</h4>'
+                f'<div class="meta">🗓️ {start_fmt} → {end_fmt}</div>'
+                f'{loc_html}{desc_html}'
+                '</div>'
+                f'<div style="padding-top:4px;">{link_html}</div>'
+                '</div>'
+                '</div>'
+            )
+            st.markdown(card_html, unsafe_allow_html=True)
+
+    # ── Gmail — Meetup Invites ────────────────────────────────────────────────
+    st.markdown("---")
+    st.markdown("#### 📧 Gmail — Meetup Invites")
+
+    import gmail_helper
+
+    col_q, col_gref = st.columns([5, 1])
+    with col_q:
+        gmail_query = st.text_input(
+            "Search query", value=gmail_helper.DEFAULT_QUERY, key="gmail_query",
+            label_visibility="collapsed",
+        )
+    with col_gref:
+        gmail_refresh = st.button("🔄 Refresh", key="gmail_refresh", use_container_width=True)
+
+    gmail_fetch_key = (gmail_query,)
+    if ("gmail_result" not in st.session_state or gmail_refresh
+            or st.session_state.get("gmail_fetch_key") != gmail_fetch_key):
+        st.session_state.gmail_result    = gmail_helper.fetch_meetup_emails(query=gmail_query, max_results=10)
+        st.session_state.gmail_fetch_key = gmail_fetch_key
+
+    gmail_result = st.session_state.gmail_result
+    gmail_emails = gmail_result["emails"]
+    gmail_is_sim = gmail_result["is_simulated"]
+
+    if gmail_is_sim:
+        gbanner_col, gaction_col = st.columns([5, 2])
+        with gbanner_col:
+            st.markdown("""
+<div class="nc-card" style="border-color:#f0883e;border-left:4px solid #f0883e;">
+  <span class="badge" style="background:#f0883e22;color:#f0883e;border-color:#f0883e55;">🔌 SIMULATED</span>
+  <span style="color:#c9d1d9;font-size:13px;">Not connected to Gmail — showing demo invites below.</span>
+</div>""", unsafe_allow_html=True)
+        with gaction_col:
+            if credentials_available():
+                if st.button("🔗 Connect Gmail", key="gmail_connect", use_container_width=True):
+                    try:
+                        with st.spinner("Opening browser for Google sign-in…"):
+                            run_oauth_flow()
+                        st.session_state.gmail_result = gmail_helper.fetch_meetup_emails(
+                            query=gmail_query, max_results=10)
+                        st.success("Connected! Loading your Gmail…")
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"Authorisation failed: {e}")
+            else:
+                st.button("🔗 Connect (needs credentials.json)", key="gmail_connect_disabled",
+                          use_container_width=True, disabled=True)
+        if gmail_result.get("error"):
+            with st.expander("Debug: last Gmail error", expanded=False):
+                st.code(gmail_result["error"])
+    else:
+        st.markdown("""
+<span class="badge" style="background:#3fb95022;color:#3fb950;border-color:#3fb95055;">✅ CONNECTED</span>
+<span style="color:#8b949e;font-size:12px;">Showing live Gmail search results</span>
+""", unsafe_allow_html=True)
+
+    if not gmail_emails:
+        st.info("No matching emails found for this query.")
+    else:
+        for em in gmail_emails:
+            link_html = (
+                f'<a href="{em["link"]}" target="_blank" '
+                'style="font-size:11px;color:#58a6ff;text-decoration:none;">🔗 Open in Gmail</a>'
+            ) if em.get("link") else ""
+            email_html = (
+                '<div class="nc-card">'
+                '<div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:8px;">'
+                '<div>'
+                f'<div style="font-weight:600;color:#e6edf3;font-size:14px;">✉️ {em.get("subject", "No Subject")}</div>'
+                f'<div style="color:#8b949e;font-size:12px;margin-top:3px;">From: {em.get("sender", "Unknown")} '
+                f'&nbsp;·&nbsp; {em.get("date", "")}</div>'
+                f'<div style="margin-top:6px;font-style:italic;color:#c9d1d9;font-size:13px;">{em.get("snippet", "")}</div>'
+                '</div>'
+                f'<div style="padding-top:4px;">{link_html}</div>'
+                '</div>'
+                '</div>'
+            )
+            st.markdown(email_html, unsafe_allow_html=True)
+
+    # ── Telegram & Community Feeds ──────────────────────────────────────────────
+    st.markdown("---")
+    st.markdown("#### 📢 Telegram & Community Feeds")
+    st.caption("Live scrape of Singapore dev-community sources — same feeds DevRelopsAgent "
+               "uses for fetch_dev_event_feeds in chat.")
+
+    import community_feed_helper
+
+    feed_refresh = st.button("🔄 Refresh Feeds", key="feed_refresh")
+    if "feed_result" not in st.session_state or feed_refresh:
+        with st.spinner("Scraping Telegram, GeeksHacking, STACK, and Meetup…"):
+            st.session_state.feed_result = community_feed_helper.fetch_community_feeds()
+
+    for feed in st.session_state.feed_result:
+        is_live   = feed.get("live_status") == "live"
+        status_html = (
+            '<span class="badge" style="background:#3fb95022;color:#3fb950;border-color:#3fb95055;">🟢 LIVE</span>'
+            if is_live else
+            '<span class="badge" style="background:#f0883e22;color:#f0883e;border-color:#f0883e55;">🔌 OFFLINE (fallback shown)</span>'
+        )
+
+        if feed.get("posts"):
+            body_html = "".join(
+                f'<div style="margin-top:6px;font-size:13px;color:#c9d1d9;">{p["text"]}<br>'
+                f'<a href="{p["link"]}" target="_blank" style="font-size:11px;color:#58a6ff;'
+                f'text-decoration:none;">🔗 Open post</a></div>'
+                for p in feed["posts"]
+            )
+        elif feed.get("headings"):
+            body_html = "".join(
+                f'<div style="margin-top:4px;font-size:13px;color:#c9d1d9;">• {h}</div>'
+                for h in feed["headings"]
+            )
+        else:
+            body_html = f'<div style="margin-top:6px;font-size:13px;color:#c9d1d9;">{feed.get("agenda", "")}</div>'
+
+        st.markdown(f"""
+<div class="nc-card">
+  <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+    <div style="font-weight:600;color:#d2a8ff;font-size:14px;">{feed.get('icon','📡')} {feed.get('source','Unknown')}</div>
+    {status_html}
   </div>
+  <div style="color:#8b949e;font-size:12px;margin-top:4px;">{feed.get('location','')}</div>
+  {body_html}
+  <div style="margin-top:8px;"><a href="{feed.get('link','')}" target="_blank"
+       style="font-size:11px;color:#58a6ff;text-decoration:none;">🔗 View source</a></div>
 </div>""", unsafe_allow_html=True)
 
 
 # ════════════════════════════════════════════════════════════════════════════════
-# TAB 3 — TIKTOK AFFILIATE CREATOR DASHBOARD
+# TAB 3 — TIKTOK STUDIO (paste-a-link tools)
 # ════════════════════════════════════════════════════════════════════════════════
 with tab_tiktok:
-    st.subheader("🎵 TikTok Affiliate Creator Dashboard")
-    st.caption("Creator metrics, affiliate product performance & trend intelligence.")
+    import tiktok_studio_helper
 
-    # Note on API access
-    with st.expander("ℹ️ About TikTok Data & Creator Center", expanded=False):
+    col_ttl, col_badge = st.columns([5, 2])
+    with col_ttl:
+        st.subheader("🎵 TikTok Studio")
+        st.caption("Paste a link — generate promo content for a product, or critique a video's performance.")
+    with col_badge:
         st.markdown("""
-The **TikTok Affiliate Creator API** requires business partner approval and is not available
-via public individual OAuth. The metrics below reflect your agent's real-time intelligence
-gathered through creator community feeds (Telegram groups, creator briefs).
-
-To view your **live Creator Center dashboard**, paste your TikTok Creator Center URL below.
-""")
-
-    # ── Creator Center Embed ───────────────────────────────────────────────────
-    st.markdown("#### 🔗 Creator Center Embed")
-    cc_url = st.text_input(
-        "Paste your TikTok Creator Center URL (optional)",
-        placeholder="https://affiliate.tiktok.com/connection/creator?...",
-        key="tiktok_cc_url",
-    )
-    if cc_url and cc_url.startswith("https://"):
-        import streamlit.components.v1 as components
-        st.info("🔒 TikTok requires you to be logged in — make sure your browser session is active.")
-        components.iframe(cc_url, height=600, scrolling=True)
-
-    st.markdown("---")
-
-    # ── KPI Metrics ───────────────────────────────────────────────────────────
-    st.markdown("#### 📊 Affiliate Performance Snapshot")
-    k1, k2, k3, k4 = st.columns(4)
-
-    k1.markdown("""
-<div class="nc-kpi">
-  <div class="val">8.5%</div>
-  <div class="lbl">Avg Engagement Rate</div>
-  <div class="delta-pos">↑ +1.2% vs last week</div>
+<div style="text-align:right;padding-top:6px;">
+  <span class="badge" style="background:#d2a8ff22;color:#d2a8ff;border-color:#8957e555;">🧠 Gemini-Powered</span>
 </div>""", unsafe_allow_html=True)
 
-    k2.markdown("""
-<div class="nc-kpi">
-  <div class="val">3</div>
-  <div class="lbl">Active Products</div>
-  <div class="delta-pos">2 high-converting</div>
-</div>""", unsafe_allow_html=True)
-
-    k3.markdown("""
-<div class="nc-kpi">
-  <div class="val">4.2%</div>
-  <div class="lbl">Avg Conversion Rate</div>
-  <div class="delta-pos">↑ +0.3% vs last week</div>
-</div>""", unsafe_allow_html=True)
-
-    k4.markdown("""
-<div class="nc-kpi">
-  <div class="val">+5%</div>
-  <div class="lbl">Creator Bonus Active</div>
-  <div class="delta-pos">USB-C Monitor campaign</div>
+    st.markdown("""
+<div class="nc-card" style="border-color:#8957e5;border-left:4px solid #d2a8ff;">
+  <span style="color:#c9d1d9;font-size:13px;">
+    TikTok has no public analytics API for individual creators, so both tools below do a
+    <strong>best-effort scrape</strong> of the pasted page (caption, hashtags, and — for videos —
+    engagement stats if TikTok's server-rendered HTML exposes them) and hand that to Gemini.
+    If scraping is blocked, the critique still runs on caption/hook alone and says so explicitly.
+  </span>
 </div>""", unsafe_allow_html=True)
 
     st.markdown("---")
 
-    # ── Trending Hashtags & Hooks ──────────────────────────────────────────────
-    col_trends, col_hooks = st.columns([1, 2])
+    tool_col1, tool_col2 = st.columns(2)
 
-    with col_trends:
-        st.markdown("#### 🔥 Trending Hashtags")
-        hashtags = ["#AIPrep", "#DevLife", "#NexusConcierge", "#ProductivityHack", "#TechCreator", "#SingaporeTech"]
-        for tag in hashtags:
-            st.markdown(f'<span class="nc-tag nc-tag-purple">{tag}</span>', unsafe_allow_html=True)
+    # ── Tool 1: Product link -> Promo idea, script, shooting suggestions ────────
+    with tool_col1:
+        st.markdown("#### 🛍️ Product → Promo Generator")
+        product_url = st.text_input(
+            "Product link", placeholder="https://your-shop.com/product/...", key="tt_product_url",
+        )
+        product_extra = st.text_area(
+            "Extra context (optional)", placeholder="e.g. target audience, key selling point",
+            key="tt_product_extra", height=68,
+        )
+        if st.button("✨ Generate Promo", key="tt_gen_promo", use_container_width=True):
+            if not product_url:
+                st.warning("Paste a product link first.")
+            else:
+                with st.spinner("Scraping product page & writing promo…"):
+                    try:
+                        st.session_state.tt_promo_result = tiktok_studio_helper.generate_product_promo(
+                            product_url, product_extra)
+                    except Exception as e:
+                        st.session_state.tt_promo_result = {"text": None, "error": str(e)}
 
-    with col_hooks:
-        st.markdown("#### 💡 Top-Performing Hooks")
-        hooks_data = [
-            {"hook": "This one tool saved my SaaS project $1000 a month.", "type": "Problem/Solution", "score": 94},
-            {"hook": "Stop wasting time writing boilerplate code! AI did it in 5 seconds.", "type": "Pattern Interrupt", "score": 88},
-            {"hook": "The secret productivity stack no one is talking about.", "type": "Curiosity Gap", "score": 82},
-        ]
-        for h in hooks_data:
-            bar_pct = h["score"]
-            st.markdown(f"""
-<div class="nc-card" style="padding:10px 14px;">
-  <div style="display:flex;justify-content:space-between;align-items:center;">
-    <span style="font-size:13px;color:#e6edf3;font-style:italic;">"{h['hook']}"</span>
-    <span class="nc-tag nc-tag-green" style="flex-shrink:0;margin-left:10px;">{h['score']}/100</span>
-  </div>
-  <div style="margin-top:8px;background:#21262d;border-radius:4px;height:4px;">
-    <div style="background:#3fb950;width:{bar_pct}%;height:4px;border-radius:4px;"></div>
-  </div>
-  <div style="font-size:11px;color:#8b949e;margin-top:4px;">{h['type']}</div>
-</div>""", unsafe_allow_html=True)
+        promo_result = st.session_state.get("tt_promo_result")
+        if promo_result:
+            if promo_result.get("text"):
+                scraped_title = (promo_result.get("scraped") or {}).get("title")
+                if scraped_title:
+                    st.caption(f"📄 Detected page: {scraped_title}")
+                elif promo_result.get("error"):
+                    st.caption(f"⚠️ Couldn't fetch the page automatically ({promo_result['error']}) — "
+                               f"wrote from the URL and extra context only.")
+                st.markdown(promo_result["text"])
+            else:
+                st.error(f"Couldn't generate promo: {promo_result.get('error')}")
 
-    st.markdown("---")
+    # ── Tool 2: TikTok video link -> performance critique ───────────────────────
+    with tool_col2:
+        st.markdown("#### 🎥 Video → Performance Critique")
+        video_url = st.text_input(
+            "TikTok video link", placeholder="https://www.tiktok.com/@user/video/...", key="tt_video_url",
+        )
+        video_extra = st.text_area(
+            "Manually reported stats (optional)",
+            placeholder="e.g. 12K views, 400 likes, 30 comments — helps if stats can't be scraped",
+            key="tt_video_extra", height=68,
+        )
+        if st.button("🔍 Analyze Video", key="tt_analyze_video", use_container_width=True):
+            if not video_url:
+                st.warning("Paste a TikTok video link first.")
+            else:
+                with st.spinner("Scraping video page & analyzing…"):
+                    try:
+                        st.session_state.tt_video_result = tiktok_studio_helper.analyze_tiktok_video(
+                            video_url, video_extra)
+                    except Exception as e:
+                        st.session_state.tt_video_result = {"text": None, "error": str(e)}
 
-    # ── Affiliate Products Table ───────────────────────────────────────────────
-    st.markdown("#### 🛍️ Affiliate Product Portfolio")
-    products = [
-        {"name": "Smart Desk Organiser",    "commission": "15%", "cvr": "4.2%", "rating": 4.8, "status": "Active"},
-        {"name": "AI Productivity Notebook", "commission": "20%", "cvr": "5.6%", "rating": 4.9, "status": "Top Performer"},
-        {"name": "USB-C Portable Monitor",  "commission": "10%", "cvr": "3.1%", "rating": 4.7, "status": "Bonus Active"},
-    ]
-
-    status_colors = {
-        "Active":       ("#21262d",  "#8b949e"),
-        "Top Performer":("#1a3a20",  "#3fb950"),
-        "Bonus Active": ("#1a2b4a",  "#58a6ff"),
-    }
-
-    for p in products:
-        bg, fg = status_colors.get(p["status"], ("#21262d", "#8b949e"))
-        stars   = "⭐" * int(p["rating"]) + ("½" if p["rating"] % 1 >= 0.5 else "")
-        st.markdown(f"""
-<div class="nc-card" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;padding:12px 18px;">
-  <div>
-    <div style="font-weight:600;color:#e6edf3;font-size:14px;">🛍️ {p['name']}</div>
-    <div style="font-size:12px;color:#8b949e;margin-top:3px;">{stars} &nbsp; {p['rating']}</div>
-  </div>
-  <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
-    <div style="text-align:center;">
-      <div style="font-size:18px;font-weight:700;color:#58a6ff;">{p['commission']}</div>
-      <div style="font-size:11px;color:#8b949e;">Commission</div>
-    </div>
-    <div style="text-align:center;">
-      <div style="font-size:18px;font-weight:700;color:#3fb950;">{p['cvr']}</div>
-      <div style="font-size:11px;color:#8b949e;">Conv. Rate</div>
-    </div>
-    <span style="background:{bg};color:{fg};border:1px solid {fg}44;border-radius:20px;
-                 padding:4px 12px;font-size:12px;font-weight:600;">{p['status']}</span>
-  </div>
-</div>""", unsafe_allow_html=True)
-
-    # ── Creator Community Intelligence ─────────────────────────────────────────
-    st.markdown("---")
-    st.markdown("#### 📡 Creator Community Intelligence")
-    feeds = [
-        {"src": "TikTok App",                              "icon": "📱", "info": "Trending hook: *'They don't want you to know this simple coding trick…'* | Suggested: AI Productivity Notebook"},
-        {"src": "Telegram: TikTok Shop SG Affiliate",      "icon": "📢", "info": "High commission challenge: promote USB-C Portable Monitors to remote developers. +5% bonus for top creators."},
-        {"src": "Telegram: SG TikTok Live Creators",       "icon": "🔴", "info": "Live coding streams experiencing a **35% surge** in viewer retention this week."},
-    ]
-    for f in feeds:
-        st.markdown(f"""
-<div class="nc-card" style="padding:10px 16px;">
-  <div style="font-weight:600;color:#d2a8ff;font-size:13px;">{f['icon']} {f['src']}</div>
-  <div style="color:#c9d1d9;font-size:13px;margin-top:4px;">{f['info']}</div>
-</div>""", unsafe_allow_html=True)
+        video_result = st.session_state.get("tt_video_result")
+        if video_result:
+            if video_result.get("text"):
+                if video_result.get("stats_found"):
+                    st.caption("📊 Live engagement stats were found on the page and used.")
+                else:
+                    st.caption("⚠️ No stats could be scraped — critique is caption/hook-based only.")
+                st.markdown(video_result["text"])
+            else:
+                st.error(f"Couldn't analyze video: {video_result.get('error')}")
 
 
 # ════════════════════════════════════════════════════════════════════════════════

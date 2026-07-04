@@ -13,8 +13,8 @@ from google.adk.tools.mcp_tool import StdioConnectionParams
 # =====================================================================
 # 1. Verify Local AI Studio Key Connection and Load Config
 # =====================================================================
-if not os.environ.get("GEMINI_API_KEY"):
-    raise ValueError("CRITICAL: GEMINI_API_KEY environment variable is not defined.")
+if not (os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")):
+    raise ValueError("CRITICAL: neither GEMINI_API_KEY nor GOOGLE_API_KEY environment variable is defined.")
 
 def load_adk_config():
     config_path = "adk_config.yml"
