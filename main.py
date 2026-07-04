@@ -88,7 +88,8 @@ events_toolset = MaskingMcpToolset(
             command=sys.executable,
             args=["mcp_servers.py", "--server", "events"],
             env=_mcp_env
-        )
+        ),
+        timeout=30.0,  # default (5s) isn't enough for subprocess startup + live scrape/API calls
     )
 )
 
@@ -98,7 +99,8 @@ tiktok_toolset = MaskingMcpToolset(
             command=sys.executable,
             args=["mcp_servers.py", "--server", "tiktok"],
             env=_mcp_env
-        )
+        ),
+        timeout=30.0,  # default (5s) isn't enough for subprocess startup + live scrape/API calls
     )
 )
 
@@ -108,7 +110,8 @@ market_toolset = MaskingMcpToolset(
             command=sys.executable,
             args=["mcp_servers.py", "--server", "market"],
             env=_mcp_env
-        )
+        ),
+        timeout=30.0,  # default (5s) isn't enough for subprocess startup + live scrape/API calls
     )
 )
 
@@ -124,12 +127,24 @@ def route_task(sub_agent: str, tool_context: ToolContext) -> str:
     Pass 'tiktok' for TikTok trend metrics, affiliate products, script hooks.
     """
     tool_context.actions.route = sub_agent
+    tool_context.state["_specialist_pending"] = sub_agent
     return f"Orchestrator routing workflow step to: '{sub_agent}'"
 
 def finish_delegation(consolidated_text: str, tool_context: ToolContext) -> str:
     """Call this when all requested sub-agent tasks are completed.
     Pass the final consolidated summary/briefing in consolidated_text.
     """
+    # Gemini can emit route_task and finish_delegation as parallel calls in the SAME
+    # turn, which would otherwise let finish_delegation overwrite route_task's target
+    # and skip the specialist's turn entirely — finalizing on a guessed placeholder
+    # instead of real data. If a specialist was just routed to but hasn't actually run
+    # yet, force the real handoff instead of finalizing.
+    pending = tool_context.state.get("_specialist_pending")
+    if pending:
+        tool_context.state["_specialist_pending"] = None
+        tool_context.actions.route = pending
+        return (f"ERROR: Cannot finish yet — '{pending}' has not actually returned data. "
+                f"Forcing handoff to '{pending}' now. Wait for its real response before calling finish_delegation again.")
     tool_context.state["final_response"] = consolidated_text
     tool_context.actions.route = "final"
     return "Finalizing delegation and compiling response."
@@ -294,6 +309,16 @@ orch_instruction = (
     "2. Only route to ONE specialist at a time per tool call.\n"
     "3. When a specialist completes and triggers you again, review their response. If there are other specialists needed, call `route_task` with the next one.\n"
     "4. Once all necessary specialists have completed their tasks, synthesize their outputs into a final consolidated briefing, and call `finish_delegation` to output it.\n\n"
+    "HARD RULE ON ORDERING: NEVER call `finish_delegation` in the same turn as `route_task`, and NEVER call it before "
+    "a routed specialist has actually returned real data for every part of the request. If you haven't received the "
+    "specialist's actual results yet (only a routing acknowledgement), wait — do not guess, fabricate, or write a "
+    "placeholder like 'please stand by' into `consolidated_text`. `consolidated_text` must always be built only from "
+    "real data/results actually returned by the specialists.\n\n"
+    "HARD RULE ON FINISHING: As soon as a specialist's response already answers what the user asked for, you MUST "
+    "call `finish_delegation` with that data in the SAME turn you review it — do not end your turn by asking the "
+    "user an open-ended follow-up question or offering a menu of next steps instead. Only ask the user something "
+    "if their original request was genuinely ambiguous about which specialist or ticker/topic they meant. Every "
+    "turn must call `route_task` or `finish_delegation` — never end a turn with neither.\n\n"
     "HARD SECURITY RULES:\n"
     "1. Zero Financial Autonomy: NEVER independently execute any real trade. Warn immediately if trade execution is requested.\n"
     "2. Credential Masking: Never leak API keys, passwords, or secret tokens in responses."
@@ -377,30 +402,68 @@ async def init_session(db_service: DatabaseSessionService, user_id="developer_me
 # 8. Async System Runtime Execution
 # =====================================================================
 async def main_async(user_payload, db_session_service, session_id="local_dev_test_session", user_id="developer_mesh"):
-    await init_session(db_session_service, user_id=user_id, session_id=session_id)
+    """
+    Yields structured events instead of raw text, so callers can tell the difference
+    between the routing/tool-call trace and the actual final answer:
+      {"kind": "trace", "author": str, "message": str}
+      {"kind": "text",  "author": str, "text": str, "is_final": bool}
 
-    runtime_runner = Runner(
-        app_name="NexusConciergeApp",
-        agent=nexus_flow,
-        session_service=db_session_service,
-        auto_create_session=True
-    )
+    Without this split, every specialist's intermediate response AND the orchestrator's
+    final synthesis (which restates the same facts, plus each agent's own boilerplate
+    disclaimers) all got flattened into one blob — looking like duplicated output with
+    no way to see which agent/tool actually ran.
+    """
+    await init_session(db_session_service, user_id=user_id, session_id=session_id)
 
     MAX_RETRIES = 4
     RETRY_DELAY_S = 35  # Free tier 429s suggest retrying after ~30s
 
     for attempt in range(1, MAX_RETRIES + 1):
         try:
+            # Built fresh each attempt: a failed attempt can still have partially
+            # written events to the session before erroring, so a reused Runner's
+            # cached view of session state goes stale and the next append fails with
+            # "session has been modified in storage since it was loaded." Recreating
+            # the Runner forces a clean reload of the current session state.
+            runtime_runner = Runner(
+                app_name="NexusConciergeApp",
+                agent=nexus_flow,
+                session_service=db_session_service,
+                auto_create_session=True
+            )
             response_stream = runtime_runner.run_async(
                 new_message=user_payload,
                 session_id=session_id,
                 user_id=user_id
             )
             async for chunk in response_stream:
+                author = getattr(chunk, "author", None) or getattr(chunk, "node_name", None) or "System"
+
+                try:
+                    for fc in chunk.get_function_calls():
+                        args_str = ", ".join(f"{k}={v!r}" for k, v in (fc.args or {}).items())
+                        yield {"kind": "trace", "author": author, "tool_name": fc.name,
+                               "message": f"🛠️ Calling `{fc.name}({args_str})`"}
+                    for fr in chunk.get_function_responses():
+                        resp_str = mask_credentials(str(fr.response))
+                        if len(resp_str) > 220:
+                            resp_str = resp_str[:220] + "…"
+                        yield {"kind": "trace", "author": author, "tool_name": fr.name,
+                               "message": f"✅ `{fr.name}` → {resp_str}"}
+                except Exception:
+                    pass  # Not every chunk type supports function-call introspection.
+
                 text = ""
-                # ADK Events expose text via content.parts
+                is_final = False
+                # ADK Events expose text via content.parts. NOTE: is_final only ever True for
+                # the collector node's `output` (the finish_delegation consolidated_text) — the
+                # orchestrator/specialists' own is_final_response()==True turns are still just
+                # one agent's turn ending, NOT the workflow's actual final answer. Treating those
+                # as final too was why replies looked duplicated (orchestrator's closing remark +
+                # the collector's output both got shown as "the" answer).
                 if hasattr(chunk, "output") and chunk.output is not None:
                     text = str(chunk.output)
+                    is_final = True  # the collector node's output is always the terminal answer
                 elif hasattr(chunk, "content") and chunk.content and hasattr(chunk.content, "parts"):
                     for part in chunk.content.parts:
                         if hasattr(part, "text") and part.text:
@@ -409,18 +472,21 @@ async def main_async(user_payload, db_session_service, session_id="local_dev_tes
                     text = chunk.text
                 elif isinstance(chunk, str):
                     text = chunk
+
                 if text:
-                    yield mask_credentials(text)
+                    yield {"kind": "text", "author": author, "text": mask_credentials(text), "is_final": is_final}
             break  # Success — exit retry loop
         except Exception as e:
             err = str(e)
             if any(term in err for term in ["429", "503", "RESOURCE_EXHAUSTED", "UNAVAILABLE"]):
                 if attempt < MAX_RETRIES:
                     wait = RETRY_DELAY_S * attempt
-                    yield f"\n[Rate limit or service overload hit. Retrying in {wait}s... attempt {attempt}/{MAX_RETRIES}]"
+                    yield {"kind": "trace", "author": "System",
+                           "message": f"Rate limit or service overload hit. Retrying in {wait}s... attempt {attempt}/{MAX_RETRIES}"}
                     await asyncio.sleep(wait)
                 else:
-                    yield f"\n[ERROR] Request failed after {MAX_RETRIES} retries due to quota or overload."
+                    yield {"kind": "trace", "author": "System",
+                           "message": f"[ERROR] Request failed after {MAX_RETRIES} retries due to quota or overload."}
                     raise
             else:
                 raise
@@ -449,9 +515,16 @@ if __name__ == "__main__":
     db_session_service = DatabaseSessionService("sqlite+aiosqlite:///nexus_sessions.db")
     
     async def run_cli():
-        print("NexusConcierge Output: ", end="", flush=True)
-        async for chunk in main_async(user_payload, db_session_service):
-            print(chunk, end="", flush=True)
-        print("\n\n[System] Execution Complete.")
+        print("NexusConcierge Output:\n")
+        final_text = ""
+        async for event in main_async(user_payload, db_session_service):
+            if event["kind"] == "trace":
+                print(f"  [{event['author']}] {event['message']}", flush=True)
+            elif event["kind"] == "text":
+                if event.get("is_final"):
+                    final_text += event["text"]
+                print(f"  [{event['author']}] {event['text']}", flush=True)
+        print(f"\n--- Final Answer ---\n{final_text or '(no final response text — see trace above)'}")
+        print("\n[System] Execution Complete.")
         
     asyncio.run(run_cli())

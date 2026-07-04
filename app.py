@@ -4,6 +4,7 @@ import sqlite3
 import json
 import os
 import sys
+import uuid
 import datetime
 
 sys.path.append(os.path.abspath("."))
@@ -17,10 +18,14 @@ st.set_page_config(
 )
 
 # ── Session state for user/session IDs (hidden from sidebar now) ────────────────
+# A fresh, per-browser-session ID — NOT a hardcoded constant. Sharing one fixed
+# session_id across every tab/user means everyone reads and corrupts the same
+# conversation history in nexus_sessions.db, which is what caused it to balloon
+# to 500+ accumulated events and degrade the model's behavior over time.
 if "user_id" not in st.session_state:
     st.session_state.user_id = "developer_mesh"
 if "session_id" not in st.session_state:
-    st.session_state.session_id = "local_dev_test_session"
+    st.session_state.session_id = f"session_{uuid.uuid4().hex[:12]}"
 
 # ── Global CSS ─────────────────────────────────────────────────────────────────
 st.markdown("""
@@ -357,12 +362,27 @@ with tab_chat:
     # Pop it before rendering history so it doesn't get shown twice.
     incoming_prompt = st.session_state.pop("quick_prompt", None)
 
-    # Chat history
+    from tool_registry import server_for_tool, SYSTEM_BADGE, DRAFT_BADGE
+
+    def _badge_html(badge):
+        return (f'<span class="badge" style="background:{badge["color"]}22;color:{badge["color"]};'
+                f'border-color:{badge["color"]}55;">{badge["icon"]} {badge["label"]}</span>')
+
+    def _trace_line_html(badge, author, message):
+        return (f'<div style="margin:4px 0;font-size:13px;">{_badge_html(badge)} '
+                f'<strong>{author}</strong> — {message}</div>')
+
+    # Chat history — including a collapsible agent trace for past assistant replies,
+    # so tool calls / routing steps stay inspectable after the fact.
     chat_area = st.container()
     with chat_area:
         for msg in st.session_state.messages:
             with st.chat_message(msg["role"], avatar="🌟" if msg["role"] == "assistant" else "🧑"):
                 st.markdown(msg["content"])
+                if msg.get("trace"):
+                    with st.expander(f"🔍 Agent trace ({len(msg['trace'])} steps)", expanded=False):
+                        for line in msg["trace"]:
+                            st.markdown(line, unsafe_allow_html=True)
 
     typed_prompt = st.chat_input("Enter your request here…")
     prompt = incoming_prompt or typed_prompt
@@ -372,20 +392,42 @@ with tab_chat:
         with st.chat_message("user", avatar="🧑"):
             st.markdown(prompt)
 
-        full_response = ""
+        # final_text accumulates only the collector's terminal answer; last_text is a
+        # fallback in case the run ends without ever flagging a final response.
+        final_text  = ""
+        last_text   = ""
+        trace_lines = []
+        answer      = ""
         with st.chat_message("assistant", avatar="🌟"):
-            placeholder  = st.empty()
-            with st.spinner("Orchestrator routing tasks…"):
-                try:
-                    for chunk in get_workflow_generator(prompt, session_id, user_id):
-                        full_response += chunk
-                        placeholder.markdown(full_response + "▌")
-                    placeholder.markdown(full_response)
-                except Exception as e:
-                    st.error(f"Pipeline error: {e}")
+            status      = st.status("Orchestrator routing tasks…", expanded=True)
+            placeholder = st.empty()
+            try:
+                for event in get_workflow_generator(prompt, session_id, user_id):
+                    if event["kind"] == "trace":
+                        badge = server_for_tool(event["tool_name"]) if event.get("tool_name") else SYSTEM_BADGE
+                        line = _trace_line_html(badge, event["author"], event["message"])
+                        trace_lines.append(line)
+                        status.update(label=f"{badge['icon']} {event['author']}: {event['message'][:60]}")
+                        status.markdown(line, unsafe_allow_html=True)
+                    else:
+                        last_text = event["text"]
+                        if event.get("is_final"):
+                            final_text += event["text"]
+                            placeholder.markdown(final_text + "▌")
+                        else:
+                            line = _trace_line_html(DRAFT_BADGE, event["author"], event["text"][:200])
+                            trace_lines.append(line)
+                            status.markdown(line, unsafe_allow_html=True)
 
-        if full_response:
-            st.session_state.messages.append({"role": "assistant", "content": full_response})
+                answer = final_text or last_text
+                status.update(label="✅ Routing complete", state="complete", expanded=False)
+                placeholder.markdown(answer or "*(No response text returned — see trace above.)*")
+            except Exception as e:
+                status.update(label="❌ Pipeline error", state="error")
+                st.error(f"Pipeline error: {e}")
+
+        if answer:
+            st.session_state.messages.append({"role": "assistant", "content": answer, "trace": trace_lines})
             st.rerun()
 
 
