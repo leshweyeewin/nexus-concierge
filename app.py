@@ -143,6 +143,11 @@ if db_state:
         else:
             st.write("*No profiles cached*")
             
+    with st.sidebar.expander("💡 User Profile Interests", expanded=False):
+        interests = db_state.get("user_interests", ["Python", "FastAPI", "Gemini API", "LLM Orchestration"])
+        for interest in interests:
+            st.write(f"- {interest}")
+            
     with st.sidebar.expander("📈 Immutable Trading Rules", expanded=False):
         trading = db_state.get("trading_parameters", {})
         if trading:
@@ -174,7 +179,7 @@ tab_chat, tab_graph, tab_mcp = st.tabs([
 # Interactive Chat Interface
 with tab_chat:
     st.subheader("Interactive Agent Session")
-    st.write("Submit a request to route tasks through specialized agents (Git, Market, TikTok).")
+    st.write("Submit a request to route tasks through specialized agents (Events, Market, TikTok).")
     
     # Initialize message list in session state
     if "messages" not in st.session_state:
@@ -249,20 +254,15 @@ with tab_mcp:
     col1, col2, col3 = st.columns(3)
     
     with col1:
-        st.markdown("### 🛠️ Git MCP Server")
+        st.markdown("### 🛠️ Events MCP Server")
         st.markdown("**Tools:**")
         st.code("""
-1. get_active_repo_context
-   - Lists repo stack & files
-
-2. check_active_branch_code
-   - Reads files safely
-
-3. fetch_dev_event_feeds
+1. fetch_dev_event_feeds
    - Live Telegram/Web Scraper
+   - Gathers event agendas live
    - Captures links from posts
         """, language="markdown")
-        st.markdown("**Status:** `Real File System & Live Scraping`")
+        st.markdown("**Status:** `Live Web & Telegram Scraping`")
         
     with col2:
         st.markdown("### 📈 Market MCP Server")

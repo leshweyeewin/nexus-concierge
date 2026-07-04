@@ -9,36 +9,13 @@ from mcp.server.fastmcp import FastMCP
 
 # Parse arguments
 parser = argparse.ArgumentParser(description="NexusConcierge Specialized MCP Server")
-parser.add_argument("--server", type=str, required=True, choices=["git", "tiktok", "market"], help="Specify which sub-server to start")
+parser.add_argument("--server", type=str, required=True, choices=["events", "tiktok", "market"], help="Specify which sub-server to start")
 args, unknown = parser.parse_known_args()
 
 server_name = f"{args.server}-server"
 mcp = FastMCP(server_name)
 
-if args.server == "git":
-    @mcp.tool(name="get_active_repo_context", description="Fetch the frameworks and structure of local development projects.")
-    def get_active_repo_context(repo_name: str) -> str:
-        try:
-            files = os.listdir(".")
-            file_list = ", ".join(files)
-            return f"Repo: {repo_name} | Files in workspace: {file_list} | Main Architecture Stack: Python, FastAPI, Gemini API, google-adk."
-        except Exception as e:
-            return f"Repo: {repo_name} | Main Architecture Stack: Python, FastAPI, Gemini API, google-adk. Error listing files: {str(e)}"
-
-    @mcp.tool(name="check_active_branch_code", description="Reads content of a specific code file in the active repository.")
-    def check_active_branch_code(file_path: str) -> str:
-        try:
-            if not os.path.exists(file_path):
-                return f"File {file_path} not found."
-            abs_path = os.path.abspath(file_path)
-            cwd = os.getcwd()
-            if not abs_path.startswith(cwd):
-                return "Access denied: file path is outside workspace."
-            with open(file_path, "r", encoding="utf-8") as f:
-                content = f.read(1000) # first 1000 chars
-            return f"File: {file_path}\nContent:\n{content}..."
-        except Exception as e:
-            return f"Error reading {file_path}: {str(e)}"
+if args.server == "events":
 
     @mcp.tool(name="fetch_dev_event_feeds", description="Scans Singapore tech developer channels live (Telegram, web portals) for event agendas, invites, and details.")
     def fetch_dev_event_feeds(platform_name: str = "all") -> str:

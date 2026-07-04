@@ -82,11 +82,11 @@ class MaskingMcpToolset(McpToolset):
 # =====================================================================
 _mcp_env = os.environ.copy()
 
-git_toolset = MaskingMcpToolset(
+events_toolset = MaskingMcpToolset(
     connection_params=StdioConnectionParams(
         server_params=StdioServerParameters(
             command=sys.executable,
-            args=["mcp_servers.py", "--server", "git"],
+            args=["mcp_servers.py", "--server", "events"],
             env=_mcp_env
         )
     )
@@ -186,13 +186,13 @@ def manage_event_profiles(action: str, person_name: str, notes: str = None, tool
         return "Event Profiles:\n" + "\n".join(f"- {name}: {n}" for name, n in profiles.items())
     return "Invalid action."
 
-def match_speaker_to_repos(speaker_interests: list[str], tool_context: ToolContext) -> str:
-    """Matches an upcoming speaker's tech stack/interests with our local repositories or frameworks."""
-    stack = "Main Architecture Stack: Python, FastAPI, Gemini API, google-adk."
-    matched = [interest for interest in speaker_interests if interest.lower() in stack.lower()]
+def match_speaker_to_interests(speaker_interests: list[str], tool_context: ToolContext) -> str:
+    """Matches an upcoming speaker's tech stack/interests with the user's software engineering interests/profile."""
+    user_ints = tool_context.state.setdefault('user_interests', ["Python", "FastAPI", "Gemini API", "LLM Orchestration"])
+    matched = [interest for interest in speaker_interests if any(ui.lower() in interest.lower() or interest.lower() in ui.lower() for ui in user_ints)]
     if matched:
-        return f"Tech Match Found! Speaker interests {matched} align with our local repository stack: {stack}"
-    return f"No direct match found. Speaker interests: {speaker_interests}. Repository stack: {stack}"
+        return f"Tech Match Found! Speaker interests {speaker_interests} align with your profile interests: {matched} (Full profile: {user_ints})"
+    return f"No direct match found. Speaker interests: {speaker_interests}. User profile interests: {user_ints}"
 
 # --- Creative Copywriter Agent Tools ---
 def manage_style_memory(action: str, hook_text: str = None, conversion_rate: float = None, tool_context: ToolContext = None) -> str:
@@ -236,16 +236,16 @@ dev_model, dev_instruction = get_agent_config(
     "DevRelopsAgent",
     "gemini-3.1-flash-lite",
     (
-        "You are a master technical networker in Singapore. You use the fetch_dev_event_feeds tool "
-        "to pull live agendas from Telegram, Meetup, GeeksHacking, STACK, and Google Developer Space. "
-        "Match the extracted events with the user's software engineering background to build a bulletproof networking plan."
+        "You are a master technical networker in Singapore. You scan dev events around town. "
+        "You use the fetch_dev_event_feeds tool to pull live agendas from Telegram, Meetup, GeeksHacking, STACK, and Google Developer Space. "
+        "Match the extracted events with the user's software engineering interests to build a bulletproof networking plan."
     )
 )
 dev_agent = Agent(
     name="DevRelopsAgent",
     model=dev_model,
     instruction=dev_instruction,
-    tools=[git_toolset, manage_event_profiles, match_speaker_to_repos]
+    tools=[events_toolset, manage_event_profiles, match_speaker_to_interests]
 )
 
 tiktok_model, tiktok_instruction = get_agent_config(
@@ -358,6 +358,7 @@ async def init_session(db_service: DatabaseSessionService, user_id="developer_me
                 "max_options_premium_allocation": 0.05 # Max 5% of portfolio premium on options
             },
             "calendar_locks": [],
+            "user_interests": ["Python", "FastAPI", "Gemini API", "LLM Orchestration"],
             "daily_briefing_count": 0
         }
         await db_service.create_session(
