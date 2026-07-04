@@ -285,13 +285,33 @@ with tab_mcp:
 
 5. get_tradingview_technical_rating
    - TradingView Scanner ratings
-   - Oscillators & Moving Averages
 
 6. get_news_sentiment
    - yfinance headline sentiment
    - CBOE VIX fear index level
+
+7. get_market_movers
+   - Top daily stock movers
+
+8. get_earnings_calendar
+   - US Ticker earnings dates
+
+9. get_economic_calendar
+   - Macro releases & Fed dates
+
+10. get_analyst_ratings
+    - Analyst upgrades & consensus
+
+11. get_institutional_flow
+    - Major holders & percentages
+
+12. get_unusual_options_activity
+    - Scan high Volume/OI ratios
+
+13. get_seller_dashboard
+    - CSP & Covered Call calculations
         """, language="markdown")
-        st.markdown("**Status:** `Live API (yfinance & TradingView)`")
+        st.markdown("**Status:** `Live API & Option Analytics`")
         
     with col3:
         st.markdown("### 📱 TikTok MCP Server")
