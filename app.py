@@ -258,11 +258,12 @@ with tab_mcp:
         st.markdown("**Tools:**")
         st.code("""
 1. fetch_dev_event_feeds
-   - Live Telegram/Web Scraper
+   - Live Telegram/Meetup Scraper
    - Gathers event agendas live
+   - Cascading fallback to Gmail Scan
    - Captures links from posts
         """, language="markdown")
-        st.markdown("**Status:** `Live Web & Telegram Scraping`")
+        st.markdown("**Status:** `Live Web, Telegram, Meetup & Gmail Fallback`")
         
     with col2:
         st.markdown("### 📈 Market MCP Server")
