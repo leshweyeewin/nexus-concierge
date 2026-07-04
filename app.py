@@ -282,8 +282,16 @@ with tab_mcp:
 
 4. get_moomoo_tiger_indicators
    - Put/Call volume ratio proxy
+
+5. get_tradingview_technical_rating
+   - TradingView Scanner ratings
+   - Oscillators & Moving Averages
+
+6. get_news_sentiment
+   - yfinance headline sentiment
+   - CBOE VIX fear index level
         """, language="markdown")
-        st.markdown("**Status:** `Live API Integration (yfinance)`")
+        st.markdown("**Status:** `Live API (yfinance & TradingView)`")
         
     with col3:
         st.markdown("### 📱 TikTok MCP Server")

@@ -384,5 +384,111 @@ elif args.server == "market":
             }
             return json.dumps(indicators)
 
+    @mcp.tool(name="get_tradingview_technical_rating", description="Retrieves live technical analysis recommendations and oscillators indicators from TradingView's scanner API.")
+    def get_tradingview_technical_rating(ticker: str) -> str:
+        ticker = ticker.upper()
+        url = "https://scanner.tradingview.com/america/scan"
+        payload = {
+            "symbols": {
+                "tickers": [f"NASDAQ:{ticker}", f"NYSE:{ticker}"],
+                "query": { "types": [] }
+            },
+            "columns": [
+                "recommendation",
+                "Recommend.All",
+                "Recommend.MA",
+                "Recommend.Other"
+            ]
+        }
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+            "Content-Type": "application/json"
+        }
+        try:
+            req = urllib.request.Request(url, data=json.dumps(payload).encode("utf-8"), headers=headers, method="POST")
+            with urllib.request.urlopen(req, timeout=5) as response:
+                res_data = json.loads(response.read().decode("utf-8"))
+            data_list = res_data.get("data", [])
+            if data_list:
+                rec_all = data_list[0]["d"][1]
+                rec_ma = data_list[0]["d"][2]
+                rec_osc = data_list[0]["d"][3]
+                def get_label(val):
+                    if val is None:
+                        return "Neutral"
+                    if val >= 0.5:
+                        return "Strong Buy"
+                    if val >= 0.1:
+                        return "Buy"
+                    if val <= -0.5:
+                        return "Strong Sell"
+                    if val <= -0.1:
+                        return "Sell"
+                    return "Neutral"
+                return json.dumps({
+                    "source": "TradingView Real-Time Technical Scan",
+                    "overall_rating": get_label(rec_all),
+                    "moving_averages_rating": get_label(rec_ma),
+                    "oscillators_rating": get_label(rec_osc),
+                    "raw_recommendation_score": round(float(rec_all), 3) if rec_all is not None else 0.0
+                })
+            else:
+                return json.dumps({"error": f"Ticker '{ticker}' not found on TradingView NASDAQ or NYSE indices."})
+        except Exception as e:
+            return json.dumps({
+                "source": "TradingView Real-Time Technical Scan",
+                "error": f"Failed to retrieve TradingView data: {str(e)}",
+                "overall_rating": "Neutral (Fallback)",
+                "moving_averages_rating": "Neutral",
+                "oscillators_rating": "Neutral",
+                "raw_recommendation_score": 0.0
+            })
+
+    @mcp.tool(name="get_news_sentiment", description="Scrapes recent stock news headlines from yfinance and calculates headline sentiment alongside the CBOE VIX Volatility index level.")
+    def get_news_sentiment(ticker: str) -> str:
+        ticker = ticker.upper()
+        try:
+            t = yf.Ticker(ticker)
+            news = t.news
+            headlines = []
+            sentiment_score = 0.0
+            pos_words = ["bullish", "beat", "surge", "growth", "high", "positive", "raise", "upgrade", "outperform", "success"]
+            neg_words = ["bearish", "miss", "plunge", "fall", "low", "negative", "cut", "downgrade", "underperform", "fail", "drop"]
+            for item in news[:5]:
+                title = item.get("title", "")
+                headlines.append(title)
+                title_lower = title.lower()
+                pos_matches = sum(1 for w in pos_words if w in title_lower)
+                neg_matches = sum(1 for w in neg_words if w in title_lower)
+                sentiment_score += (pos_matches - neg_matches)
+            overall_news = "Neutral"
+            if sentiment_score > 0.5:
+                overall_news = "Bullish"
+            elif sentiment_score < -0.5:
+                overall_news = "Bearish"
+            vix = yf.Ticker("^VIX")
+            vix_hist = vix.history(period="1d")
+            vix_price = 15.0
+            if not vix_hist.empty:
+                vix_price = round(float(vix_hist["Close"].iloc[-1]), 2)
+            vix_sentiment = "Greed (Low Volatility)" if vix_price < 15 else ("Normal" if vix_price < 20 else "Fear (High Volatility)")
+            return json.dumps({
+                "ticker": ticker,
+                "recent_headlines": headlines[:3],
+                "estimated_news_sentiment": overall_news,
+                "financial_sentiment_score": sentiment_score,
+                "cboe_vix_index": vix_price,
+                "vix_market_state": vix_sentiment
+            })
+        except Exception as e:
+            return json.dumps({
+                "ticker": ticker,
+                "estimated_news_sentiment": "Neutral (Simulation)",
+                "financial_sentiment_score": 0.0,
+                "cboe_vix_index": 14.85,
+                "vix_market_state": "Greed (Low Volatility)",
+                "error": str(e)
+            })
+
 if __name__ == "__main__":
     mcp.run(transport="stdio")
