@@ -16,6 +16,12 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
+# ── Session state for user/session IDs (hidden from sidebar now) ────────────────
+if "user_id" not in st.session_state:
+    st.session_state.user_id = "developer_mesh"
+if "session_id" not in st.session_state:
+    st.session_state.session_id = "local_dev_test_session"
+
 # ── Global CSS ─────────────────────────────────────────────────────────────────
 st.markdown("""
 <style>
@@ -189,75 +195,101 @@ st.markdown("""
 <hr style="border:none;border-top:1px solid #21262d;margin:10px 0 16px;">
 """, unsafe_allow_html=True)
 
-# ── Sidebar ────────────────────────────────────────────────────────────────────
+# ── Sidebar — Demo Panel ───────────────────────────────────────────────────────
 with st.sidebar:
-    st.markdown("### ⚙️ Configuration")
-    user_id    = st.text_input("User ID",    value="developer_mesh")
-    session_id = st.text_input("Session ID", value="local_dev_test_session")
-
-    db_state = fetch_session_state(user_id, session_id)
+    # Logo & title
+    st.markdown("""
+<div style="text-align:center;padding:10px 0 16px 0;">
+  <div style="font-size:40px;">🌟</div>
+  <div style="font-family:'Outfit',sans-serif;font-size:18px;font-weight:700;color:#58a6ff;">NexusConcierge OS</div>
+  <div style="font-size:11px;color:#8b949e;margin-top:4px;">Google ADK · FastMCP · Gemini 2.5</div>
+</div>
+""", unsafe_allow_html=True)
 
     st.markdown("---")
-    st.markdown("### 💾 State Memory Inspector")
 
-    if db_state:
-        st.success("Active session context loaded", icon="✅")
-
-        # ── Calendar Locks ──────────────────────────────────────────────────
-        with st.expander("🔒 Calendar Locks", expanded=True):
-            locks = db_state.get("calendar_locks", [])
-            if locks:
-                html_locks = " ".join(f'<span class="sb-lock">🔒 {l}</span>' for l in locks)
-                st.markdown(html_locks, unsafe_allow_html=True)
-            else:
-                st.caption("No active locks")
-
-        # ── Event Profiles ──────────────────────────────────────────────────
-        with st.expander("👥 Event Profiles", expanded=False):
-            profiles = db_state.get("event_profiles", {})
-            if profiles:
-                for name, bio in profiles.items():
-                    st.markdown(f"""
-<div class="nc-card" style="padding:10px 14px;margin-bottom:6px;">
-  <div style="font-weight:600;color:#e6edf3;font-size:13px;">👤 {name}</div>
-  <div style="color:#8b949e;font-size:12px;margin-top:4px;line-height:1.5;">{bio}</div>
+    # ── Agent Status ────────────────────────────────────────────────────────
+    st.markdown("### 🤖 Agent Fleet")
+    agents = [
+        {"name": "NexusOrchestrator",      "icon": "🧠", "role": "Router · Gemini 2.5",         "color": "#58a6ff"},
+        {"name": "DevRelopsAgent",          "icon": "💻", "role": "Events · Calendar · Gmail",    "color": "#3fb950"},
+        {"name": "QuantitativeRiskAgent",   "icon": "📈", "role": "Market · Options · RSI/MACD",  "color": "#f0883e"},
+        {"name": "CreativeAffiliateAgent",  "icon": "🎵", "role": "TikTok · Hooks · Trends",      "color": "#d2a8ff"},
+    ]
+    for ag in agents:
+        st.markdown(f"""
+<div style="background:#161b22;border:1px solid #21262d;border-left:3px solid {ag['color']};
+            border-radius:8px;padding:8px 12px;margin-bottom:8px;">
+  <div style="display:flex;align-items:center;gap:8px;">
+    <span style="font-size:18px;">{ag['icon']}</span>
+    <div>
+      <div style="font-size:12px;font-weight:600;color:#e6edf3;">{ag['name']}</div>
+      <div style="font-size:11px;color:#8b949e;margin-top:1px;">{ag['role']}</div>
+    </div>
+    <div style="margin-left:auto;">
+      <span style="background:#0f2a14;color:#3fb950;border:1px solid #3fb95055;
+                   border-radius:20px;padding:2px 8px;font-size:10px;font-weight:600;">● LIVE</span>
+    </div>
+  </div>
 </div>""", unsafe_allow_html=True)
-            else:
-                st.caption("No profiles cached")
 
-        # ── User Interests ──────────────────────────────────────────────────
-        with st.expander("💡 Interests", expanded=False):
-            interests = db_state.get("user_interests", ["Python", "FastAPI", "Gemini API", "LLM Orchestration"])
-            tags_html = " ".join(f'<span class="nc-tag nc-tag-blue">#{i}</span>' for i in interests)
-            st.markdown(tags_html, unsafe_allow_html=True)
+    st.markdown("---")
 
-        # ── Trading Rules ───────────────────────────────────────────────────
-        with st.expander("📈 Trading Rules", expanded=False):
-            trading = db_state.get("trading_parameters", {})
-            if trading:
-                items = list(trading.items())
-                for i in range(0, len(items), 2):
-                    cols = st.columns(2)
-                    for j, (k, v) in enumerate(items[i:i+2]):
-                        cols[j].metric(k.replace("_", " ").title(), v)
-            else:
-                st.caption("No rules set")
-
-        # ── Copywriter Hooks ────────────────────────────────────────────────
-        with st.expander("🎨 Hook Memory", expanded=False):
-            hooks = db_state.get("affiliate_style_memory", [])
-            if hooks:
-                for hook in hooks:
-                    rate = hook.get("conversion_rate", 0)
-                    st.markdown(f"""
-<div class="sb-hook">
-  💬 "{hook.get('hook','')}"
-  <div class="sb-conv">✅ Conversion: {rate:.0%}</div>
+    # ── MCP Servers ─────────────────────────────────────────────────────────
+    st.markdown("### ⚡ MCP Servers")
+    mcps = [
+        {"name": "Events MCP",   "tools": "4 tools",  "icon": "🛠️", "color": "#3fb950"},
+        {"name": "Market MCP",   "tools": "13 tools", "icon": "📊", "color": "#f0883e"},
+        {"name": "TikTok MCP",   "tools": "4 tools",  "icon": "🎵", "color": "#d2a8ff"},
+    ]
+    for m in mcps:
+        st.markdown(f"""
+<div style="background:#161b22;border:1px solid #21262d;border-radius:8px;
+            padding:8px 12px;margin-bottom:6px;display:flex;align-items:center;gap:10px;">
+  <span style="font-size:16px;">{m['icon']}</span>
+  <div style="flex:1;">
+    <div style="font-size:12px;font-weight:600;color:#e6edf3;">{m['name']}</div>
+    <div style="font-size:11px;color:#8b949e;">{m['tools']} registered</div>
+  </div>
+  <span style="color:{m['color']};font-size:11px;">✓</span>
 </div>""", unsafe_allow_html=True)
-            else:
-                st.caption("No hooks saved")
-    else:
-        st.warning("Session not initialised yet.", icon="⚠️")
+
+    st.markdown("---")
+
+    # ── Quick-Action Prompts ─────────────────────────────────────────────────
+    st.markdown("### 💡 Try These Prompts")
+    quick_prompts = [
+        ("📅", "What's on my calendar this week?"),
+        ("📈", "Get live price and RSI for NVDA"),
+        ("🎵", "What TikTok trends should I focus on?"),
+        ("🗓️", "Are there any dev events in Singapore?"),
+        ("💰", "Analyse my options risk for this week"),
+    ]
+    for icon, prompt_text in quick_prompts:
+        if st.button(f"{icon} {prompt_text[:32]}…" if len(prompt_text) > 32 else f"{icon} {prompt_text}",
+                     key=f"qp_{prompt_text[:20]}", use_container_width=True):
+            st.session_state["quick_prompt"] = prompt_text
+            st.session_state["active_tab"]   = "chat"
+            st.rerun()
+
+    st.markdown("---")
+    # Tech stack badges
+    st.markdown("""
+<div style="text-align:center;">
+  <span style="background:#1f6feb22;color:#58a6ff;border:1px solid #1f6feb55;
+               border-radius:20px;padding:3px 10px;font-size:10px;margin:2px;display:inline-block;">Google ADK</span>
+  <span style="background:#1f6feb22;color:#58a6ff;border:1px solid #1f6feb55;
+               border-radius:20px;padding:3px 10px;font-size:10px;margin:2px;display:inline-block;">FastMCP</span>
+  <span style="background:#1f6feb22;color:#58a6ff;border:1px solid #1f6feb55;
+               border-radius:20px;padding:3px 10px;font-size:10px;margin:2px;display:inline-block;">Gemini 2.5</span>
+  <span style="background:#1f6feb22;color:#58a6ff;border:1px solid #1f6feb55;
+               border-radius:20px;padding:3px 10px;font-size:10px;margin:2px;display:inline-block;">Streamlit</span>
+</div>
+""", unsafe_allow_html=True)
+
+    # keep user_id / session_id accessible (hidden but usable)
+    user_id    = st.session_state.user_id
+    session_id = st.session_state.session_id
 
 
 # ── Main Tabs ──────────────────────────────────────────────────────────────────
@@ -279,6 +311,11 @@ with tab_chat:
 
     if "messages" not in st.session_state:
         st.session_state.messages = []
+
+    # Auto-fire quick prompts clicked from sidebar
+    if "quick_prompt" in st.session_state and st.session_state.quick_prompt:
+        _qp = st.session_state.pop("quick_prompt")
+        st.session_state.messages.append({"role": "user", "content": _qp})
 
     # Chat history
     chat_area = st.container()
