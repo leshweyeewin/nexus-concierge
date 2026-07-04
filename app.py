@@ -235,13 +235,32 @@ with st.sidebar:
         with st.expander("📈 Trading Rules", expanded=False):
             trading = db_state.get("trading_parameters", {})
             if trading:
-                items = list(trading.items())
-                for i in range(0, len(items), 2):
-                    cols = st.columns(2)
-                    for j, (k, v) in enumerate(items[i:i+2]):
-                        cols[j].metric(k.replace("_", " ").title(), v)
+                for k, v in trading.items():
+                    label = k.replace("_", " ").title()
+                    # Coerce any non-scalar value to a readable string
+                    if isinstance(v, list):
+                        # Render list items as compact tags instead of metric
+                        tags_html = " ".join(
+                            f'<span class="nc-tag">{item}</span>'
+                            for item in v
+                        )
+                        st.markdown(
+                            f'<div style="font-size:12px;color:#8b949e;margin-bottom:2px;">{label}</div>'
+                            f'{tags_html}',
+                            unsafe_allow_html=True,
+                        )
+                        st.markdown("<div style='margin-bottom:8px;'></div>", unsafe_allow_html=True)
+                    elif isinstance(v, dict):
+                        st.markdown(
+                            f'<div style="font-size:12px;color:#8b949e;margin-bottom:2px;">{label}</div>',
+                            unsafe_allow_html=True,
+                        )
+                        st.json(v)
+                    else:
+                        st.metric(label, str(v))
             else:
                 st.caption("No rules set")
+
 
         # ── Copywriter Hooks ────────────────────────────────────────────────
         with st.expander("🎨 Hook Memory", expanded=False):
