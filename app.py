@@ -262,8 +262,20 @@ with tab_mcp:
    - Gathers event agendas live
    - Cascading fallback to Gmail Scan
    - Captures links from posts
+
+2. list_google_calendar_events
+   - Connects to real Google Calendar
+   - Lists upcoming scheduling slots
+
+3. create_google_calendar_event
+   - Creates new events in GCalendar
+   - Maps to pasg/networking slots
+
+4. search_gmail_emails
+   - Searches real Gmail inbox
+   - Resolves tech meetup matches
         """, language="markdown")
-        st.markdown("**Status:** `Live Web, Telegram, Meetup & Gmail Fallback`")
+        st.markdown("**Status:** `Live Web, Telegram, Meetup & Google APIs (with Simulated Fallbacks)`")
         
     with col2:
         st.markdown("### 📈 Market MCP Server")

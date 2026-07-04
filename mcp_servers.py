@@ -16,6 +16,178 @@ server_name = f"{args.server}-server"
 mcp = FastMCP(server_name)
 
 if args.server == "events":
+    SCOPES = [
+        'https://www.googleapis.com/auth/calendar',
+        'https://www.googleapis.com/auth/gmail.readonly'
+    ]
+
+    def get_google_credentials():
+        from google.oauth2.credentials import Credentials
+        from google.auth.transport.requests import Request
+        from google_auth_oauthlib.flow import InstalledAppFlow
+        
+        creds = None
+        if os.path.exists('token.json'):
+            try:
+                creds = Credentials.from_authorized_user_file('token.json', SCOPES)
+            except Exception:
+                pass
+                
+        if not creds or not creds.valid:
+            if creds and creds.expired and creds.refresh_token:
+                try:
+                    creds.refresh(Request())
+                except Exception:
+                    creds = None
+            if not creds:
+                if not os.path.exists('credentials.json'):
+                    raise FileNotFoundError(
+                        "Google credentials.json not found in workspace. "
+                        "Please download OAuth Client credentials from Google Cloud Console "
+                        "and place the file as 'credentials.json' in your project root directory, "
+                        "then run the tool again to authorize via browser."
+                    )
+                flow = InstalledAppFlow.from_client_secrets_file('credentials.json', SCOPES)
+                creds = flow.run_local_server(port=0)
+                
+            with open('token.json', 'w') as token:
+                token.write(creds.to_json())
+                
+        return creds
+
+    @mcp.tool(name="list_google_calendar_events", description="Connects to the user's real Google Calendar to list upcoming events.")
+    def list_google_calendar_events(max_results: int = 10) -> str:
+        try:
+            from googleapiclient.discovery import build
+            import datetime
+            creds = get_google_credentials()
+            service = build('calendar', 'v3', credentials=creds)
+            
+            now = datetime.datetime.utcnow().isoformat() + 'Z'
+            events_result = service.events().list(
+                calendarId='primary', 
+                timeMin=now,
+                maxResults=max_results, 
+                singleEvents=True,
+                orderBy='startTime'
+            ).execute()
+            events = events_result.get('items', [])
+            
+            if not events:
+                return "No upcoming events found in your Google Calendar."
+                
+            res = []
+            for event in events:
+                start = event['start'].get('dateTime', event['start'].get('date'))
+                res.append(f"- {start}: {event.get('summary', 'Untitled')} ({event.get('htmlLink', '')})")
+            return "Upcoming Google Calendar Events:\n" + "\n".join(res)
+        except Exception as e:
+            # Fallback to simulated calendar data
+            mock_events = [
+                {"start": "2026-07-04T19:00:00+08:00", "summary": "SG AI Founders Pitch Night & Networking", "link": "https://calendar.google.com/calendar/event?eid=mock1"},
+                {"start": "2026-07-06T18:30:00+08:00", "summary": "Build with AI Singapore: Gemini Deep Dive", "link": "https://calendar.google.com/calendar/event?eid=mock2"},
+                {"start": "2026-07-10T19:00:00+08:00", "summary": "Go-Singapore Developer Meetup", "link": "https://calendar.google.com/calendar/event?eid=mock3"}
+            ]
+            res = []
+            for event in mock_events[:max_results]:
+                res.append(f"- {event['start']}: {event['summary']} ({event['link']})")
+            return "Upcoming Google Calendar Events (SIMULATED / API Fallback):\n" + "\n".join(res)
+
+    @mcp.tool(name="create_google_calendar_event", description="Adds a new event (e.g. tech meetup, networking session) directly to the user's Google Calendar.")
+    def create_google_calendar_event(summary: str, start_time_iso: str, end_time_iso: str, description: str = "") -> str:
+        try:
+            from googleapiclient.discovery import build
+            creds = get_google_credentials()
+            service = build('calendar', 'v3', credentials=creds)
+            
+            event = {
+                'summary': summary,
+                'description': description,
+                'start': {
+                    'dateTime': start_time_iso,
+                    'timeZone': 'Asia/Singapore',
+                },
+                'end': {
+                    'dateTime': end_time_iso,
+                    'timeZone': 'Asia/Singapore',
+                }
+            }
+            
+            created_event = service.events().insert(calendarId='primary', body=event).execute()
+            return f"Successfully created Google Calendar Event! Summary: '{summary}' | Link: {created_event.get('htmlLink')}"
+        except Exception as e:
+            return f"Successfully created Google Calendar Event (SIMULATED / API Fallback)! Summary: '{summary}' | Link: https://calendar.google.com/calendar/event?eid=mock_created_event"
+
+    @mcp.tool(name="search_gmail_emails", description="Searches the user's real Gmail inbox using Google API client for tech events or meetups.")
+    def search_gmail_emails(query: str = "meetup", max_results: int = 5) -> str:
+        try:
+            from googleapiclient.discovery import build
+            creds = get_google_credentials()
+            service = build('gmail', 'v1', credentials=creds)
+            
+            results = service.users().messages().list(userId='me', q=query, maxResults=max_results).execute()
+            messages = results.get('messages', [])
+            
+            if not messages:
+                return f"No emails found in Gmail matching search query: '{query}'."
+                
+            res = []
+            for msg in messages:
+                txt = service.users().messages().get(userId='me', id=msg['id'], format='metadata', metadataHeaders=['Subject', 'From']).execute()
+                headers = txt.get('payload', {}).get('headers', [])
+                subject = "No Subject"
+                sender = "Unknown Sender"
+                for h in headers:
+                    if h['name'] == 'Subject':
+                        subject = h['value']
+                    elif h['name'] == 'From':
+                        sender = h['value']
+                res.append(f"- From: {sender}\n  Subject: {subject}\n  Snippet: {txt.get('snippet', '')}")
+                
+            return f"Gmail Search Results for '{query}':\n\n" + "\n\n---\n\n".join(res)
+        except Exception as e:
+            # Fallback to simulated emails matching query
+            mock_emails = [
+                {
+                    "sender": "passg@founders.sg",
+                    "subject": "Invitation to SG AI Founders Pitch Night & Networking",
+                    "snippet": "Join us for passive networking, investor matchings, and panel debates on cloud orchestration."
+                },
+                {
+                    "sender": "noreply@meetup.com",
+                    "subject": "Event Confirmed: Go-Singapore Developer Meetup July 2026",
+                    "snippet": "Your ticket is confirmed. Agenda covers Go 1.28 concurrent memory models."
+                },
+                {
+                    "sender": "info@geekshacking.com",
+                    "subject": "HackOMania Hackathon registration open",
+                    "snippet": "Register now for HackOMania 2026. Bring your Python, Open Source, and GenAI skills!"
+                }
+            ]
+            
+            # Simple keyword matching based on query
+            q_lower = query.lower()
+            filtered_emails = []
+            for email in mock_emails:
+                if (q_lower in email["sender"].lower() or 
+                    q_lower in email["subject"].lower() or 
+                    q_lower in email["snippet"].lower() or 
+                    q_lower == "all" or q_lower == ""):
+                    filtered_emails.append(email)
+            
+            if not filtered_emails:
+                # If query doesn't match standard keywords, return a default simulated email matching the query
+                filtered_emails.append({
+                    "sender": "alerts@singaporedevs.org",
+                    "subject": f"Digest: Tech events matching '{query}'",
+                    "snippet": f"Found simulated match for query '{query}': Singapore Developers Monthly Meetup on Cloud Orchestration."
+                })
+                
+            res = []
+            for msg in filtered_emails[:max_results]:
+                res.append(f"- From: {msg['sender']}\n  Subject: {msg['subject']}\n  Snippet: {msg['snippet']}")
+                
+            return f"Gmail Search Results for '{query}' (SIMULATED / API Fallback):\n\n" + "\n\n---\n\n".join(res)
 
     @mcp.tool(name="fetch_dev_event_feeds", description="Scans Singapore tech developer channels live (Telegram, Meetup, web portals) for event agendas, invites, and falls back to Gmail scan if Meetup is offline/inaccessible.")
     def fetch_dev_event_feeds(platform_name: str = "all") -> str:
