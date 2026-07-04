@@ -1,6 +1,9 @@
 # NexusConcierge — Cross-Domain Multi-Agent Life Engine
 
-NexusConcierge is a conditional **Workflow DAG Graph** built on the Google Agent Development Kit (`google-adk`). It coordinates three daily workflows into one session state: Singapore developer networking events, TikTok affiliate marketing hook generation, and options-trading risk enforcement.
+NexusConcierge is a conditional **Workflow DAG Graph** built on the Google Agent Development Kit (`google-adk`). It coordinates three daily workflows into one session state: 
+- Singapore developer networking events
+- TikTok affiliate marketing hook generation, and
+- Options-trading risk enforcement.
 
 ---
 
