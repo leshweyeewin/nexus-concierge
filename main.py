@@ -2,6 +2,7 @@ import os
 import sys
 import json
 import asyncio
+import yaml
 from google.genai.types import Content, Part
 from google.adk import Agent, Workflow, Runner
 from google.adk.sessions.database_session_service import DatabaseSessionService
@@ -10,10 +11,36 @@ from google.adk.tools import ToolContext, McpToolset
 from google.adk.tools.mcp_tool import StdioConnectionParams
 
 # =====================================================================
-# 1. Verify Local AI Studio Key Connection
+# 1. Verify Local AI Studio Key Connection and Load Config
 # =====================================================================
 if not os.environ.get("GEMINI_API_KEY"):
     raise ValueError("CRITICAL: GEMINI_API_KEY environment variable is not defined.")
+
+def load_adk_config():
+    config_path = "adk_config.yml"
+    if os.path.exists(config_path):
+        try:
+            with open(config_path, "r", encoding="utf-8") as f:
+                cfg = yaml.safe_load(f)
+                print("[Config] Configuration loaded successfully from adk_config.yml")
+                return cfg
+        except Exception as e:
+            print(f"[Warning] Could not parse {config_path}: {e}")
+    else:
+        print(f"[Warning] {config_path} not found. Using system defaults.")
+    return None
+
+adk_config = load_adk_config()
+
+def get_agent_config(agent_name: str, default_model: str, default_instruction: str):
+    if adk_config and "agents" in adk_config:
+        for agent in adk_config["agents"]:
+            if agent.get("name") == agent_name:
+                return (
+                    agent.get("model", default_model),
+                    agent.get("system_instruction", default_instruction)
+                )
+    return default_model, default_instruction
 
 # =====================================================================
 # 2. SECURITY GUARDRAIL: Credential Masking
@@ -138,113 +165,6 @@ def get_daily_briefing(tool_context: ToolContext) -> str:
     brief += f"Historical Hooks Cached: {len(tiktok_mem)} hooks\n"
     return brief
 
-# --- Dev-Relops Agent Tools ---
-def scan_singapore_dev_events(platform_name: str) -> str:
-    """Production Tool: Connects and parses active events across target Singapore tech ecosystems live."""
-    import urllib.request
-    import re
-    
-    platform = platform_name.lower().strip()
-    
-    # 1. Fallback Offline Database Map
-    community_feeds = {
-        "google developer space": (
-            "📍 Location: 70 Pasir Panjang Rd, MBC II.\n"
-            "🔥 Live Channels: Telegram Channel (@googledevspacesg) & GDG Community Page.\n"
-            "🗓️ Latest Tranche: 'Build with AI Singapore: Gemini Deep Dive' & 'Google Cloud Next Extended'.\n"
-            "🎯 Networking Targets: Google Senior DevRel Engineers, GKE/Kubernetes Core Operators."
-        ),
-        "geekshacking community": (
-            "📍 Location: Rotates across local tech offices (Lazada One, CapitaGreen).\n"
-            "🔥 Live Channels: Instagram (@geekshacking) & official event landing pages.\n"
-            "🗓️ Latest Tranche: 'HackOMania: Harnessing AI for Good Hackathon'.\n"
-            "🎯 Networking Targets: Open-source software engineers, nonprofit tech organizers, UX designers."
-        ),
-        "stack community": (
-            "📍 Location: GovTech Punggol Digital District (82 Punggol Way).\n"
-            "🔥 Live Channels: Singapore Government Developer Portal.\n"
-            "🗓️ Latest Tranche: 'STACK Meetup: Why Data Reality Shapes AI Development'.\n"
-            "🎯 Networking Targets: GovTech Engineers, Public Sector Data Architects, Civic Tech Operators."
-        ),
-        "meetup app": (
-            "📍 Location: Distributed (HackerspaceSG at Textile Centre, AWS Offices).\n"
-            "🔥 Live Channels: Meetup.com API Channels.\n"
-            "🗓️ Latest Tranche: AI Tinkerers SG Showcase, Vibe Coders SG Weekly Build Session.\n"
-            "🎯 Networking Targets: Independent AI Product Founders, Venture Capital scouts, LeetCode groups."
-        ),
-        "telegram channels": (
-            "📍 Location: Digital Workspace.\n"
-            "🔥 Live Channels: Singapore HUG (HashiCorp), Cloud Native CNCF Channel, GeeksHacking Chat.\n"
-            "🗓️ Latest Tranche: Interactive Flash-meetups, 'Roast My Tech Stack' evening sessions.\n"
-            "🎯 Networking Targets: DevOps leads, site reliability engineers, local tech developers."
-        )
-    }
-    
-    # Identify target key
-    matched_key = None
-    for key in community_feeds.keys():
-        if key in platform or platform in key:
-            matched_key = key
-            break
-            
-    if not matched_key:
-        return f"Platform '{platform_name}' recognized but no active scheduled events found. Defaulting to general Meetup search."
-        
-    headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
-    
-    # 2. Live scrapers based on matched platform
-    if matched_key == "google developer space":
-        url = "https://t.me/s/googledevspacesg"
-        try:
-            req = urllib.request.Request(url, headers=headers)
-            with urllib.request.urlopen(req, timeout=8) as response:
-                html = response.read().decode('utf-8')
-            posts = re.findall(r'<div class="tgme_widget_message_text[^"]*"[^>]*>(.*?)</div>', html, re.DOTALL)
-            if posts:
-                clean_posts = []
-                for p in posts[-3:]:  # take last 3 posts
-                    p_clean = re.sub(r'<[^>]+>', '', p)
-                    p_clean = p_clean.replace('&amp;', '&').replace('&#33;', '!').replace('&lt;', '<').replace('&gt;', '>')
-                    clean_posts.append(p_clean.strip())
-                joined_posts = "\n\n---\n\n".join(clean_posts)
-                return f"--- [LIVE TELEGRAM FEEDS SECURED FOR: GOOGLE DEVELOPER SPACE] ---\n{joined_posts}"
-        except Exception as e:
-            pass # Fall back to offline feed
-            
-    elif matched_key == "geekshacking community":
-        url = "https://geekshacking.com/"
-        try:
-            req = urllib.request.Request(url, headers=headers)
-            with urllib.request.urlopen(req, timeout=8) as response:
-                html = response.read().decode('utf-8')
-            headings = re.findall(r'<h[1234][^>]*>(.*?)</h[1234]>', html, re.DOTALL)
-            if headings:
-                clean_headings = [re.sub(r'<[^>]+>', '', h).strip() for h in headings if len(h.strip()) > 2]
-                summary = "Live site headers found:\n" + "\n".join(f"- {h}" for h in clean_headings[:8])
-                return f"--- [LIVE WEB FEEDS SECURED FOR: GEEKSHACKING] ---\n📍 Landing: {url}\n{summary}"
-        except Exception as e:
-            pass
-            
-    elif matched_key == "stack community":
-        url = "https://www.developer.tech.gov.sg/communities/events/stack-meetups/"
-        try:
-            req = urllib.request.Request(url, headers=headers)
-            with urllib.request.urlopen(req, timeout=8) as response:
-                html = response.read().decode('utf-8')
-            title_match = re.search(r'<title>(.*?)</title>', html, re.IGNORECASE)
-            title = title_match.group(1).strip() if title_match else "STACK Meetups"
-            headings = re.findall(r'<h[23][^>]*>(.*?)</h[23]>', html, re.DOTALL)
-            if headings:
-                clean_headings = [re.sub(r'<[^>]+>', '', h).strip() for h in headings]
-                summary = f"Title: {title}\nLive sections found:\n" + "\n".join(f"- {h}" for h in clean_headings[:6])
-                return f"--- [LIVE PORTAL FEEDS SECURED FOR: STACK COMMUNITY] ---\n📍 Landing: {url}\n{summary}"
-        except Exception as e:
-            pass
-
-    # 3. Fallback to high-fidelity simulated database block
-    fallback_data = community_feeds[matched_key]
-    return f"--- [OFFLINE FEEDS SECURED FOR: {matched_key.upper()} (Connection Refused/Fallback)] ---\n{fallback_data}"
-
 def manage_event_profiles(action: str, person_name: str, notes: str = None, tool_context: ToolContext = None) -> str:
     """Stores or searches contacts/founders/creators met at AI events (Dynamic Event Profiles).
     action: 'add', 'search', or 'list'.
@@ -312,57 +232,78 @@ def check_risk_setup(ticker: str, entry_price: float, stop_loss: float, tool_con
 # =====================================================================
 # 5. Specialized Domain Agents
 # =====================================================================
-dev_agent = Agent(
-    name="DevRelopsAgent",
-    model="gemini-3.1-flash-lite",
-    instruction=(
-        "You are a master technical networker in Singapore. You use the scan_singapore_dev_events tool "
+dev_model, dev_instruction = get_agent_config(
+    "DevRelopsAgent",
+    "gemini-3.1-flash-lite",
+    (
+        "You are a master technical networker in Singapore. You use the fetch_dev_event_feeds tool "
         "to pull live agendas from Telegram, Meetup, GeeksHacking, STACK, and Google Developer Space. "
         "Match the extracted events with the user's software engineering background to build a bulletproof networking plan."
-    ),
-    tools=[scan_singapore_dev_events, git_toolset, manage_event_profiles, match_speaker_to_repos]
+    )
+)
+dev_agent = Agent(
+    name="DevRelopsAgent",
+    model=dev_model,
+    instruction=dev_instruction,
+    tools=[git_toolset, manage_event_profiles, match_speaker_to_repos]
 )
 
-tiktok_agent = Agent(
-    name="CreativeAffiliateAgent",
-    model="gemini-3.1-flash-lite",
-    instruction=(
+tiktok_model, tiktok_instruction = get_agent_config(
+    "CreativeAffiliateAgent",
+    "gemini-3.1-flash-lite",
+    (
         "You are the Creative Copywriter Agent. Generate creative hooks and TikTok scripts based on trending "
         "hashtags, keyword performance, and product datasets. Sourced from the TikTok App, Gmail, and the Telegram "
-        "groups: 'TTS Beauty Creator Community', 'Tiktok Shop SG New Creators', 'Tiktok Shop SG Affaliate Creator Community', "
+        "groups: 'TTS Beauty Creator Community', 'Tiktok Shop SG New Creators', 'Tiktok Shop SG Affiliate Creator Community', "
         "'SG Tiktok Live Creators Community', and 'Tiktok Shop SG Video Brand Opportunities' via fetch_tiktok_creator_feeds.\n"
         "Always adapt script hooks to the historical affiliate brand voice/style memory in your context."
-    ),
+    )
+)
+tiktok_agent = Agent(
+    name="CreativeAffiliateAgent",
+    model=tiktok_model,
+    instruction=tiktok_instruction,
     tools=[tiktok_toolset, manage_style_memory]
 )
 
-trading_agent = Agent(
-    name="QuantitativeRiskAgent",
-    model="gemini-3.1-flash-lite",
-    instruction=(
+trading_model, trading_instruction = get_agent_config(
+    "QuantitativeRiskAgent",
+    "gemini-3.1-flash-lite",
+    (
         "You are the Quantitative Risk Agent. Monitor financial market indicators, analyze price feeds, and "
         "perform risk calculations checking setup limits on MooMoo API, publicly available APIs, Tiger Brokers, "
         "and MooMoo platforms. You analyze Options chains (via get_options_chain) and MooMoo/Tiger sentiment indicators (via get_moomoo_tiger_indicators).\n"
         "HARD RULE: You have ZERO financial autonomy and cannot place real trades. Warn the user if a setup violates rules. "
         "Execution remains strictly locked behind Human-in-the-Loop validation."
-    ),
+    )
+)
+trading_agent = Agent(
+    name="QuantitativeRiskAgent",
+    model=trading_model,
+    instruction=trading_instruction,
     tools=[market_toolset, get_trading_rules, check_risk_setup]
 )
 
+orch_model = "gemini-3.1-flash-lite"
+orch_instruction = (
+    "You are the central engine of NexusConcierge. Parse the core message details.\n"
+    "Process:\n"
+    "1. When the user makes a request, delegate tasks sequentially by calling the `route_task` tool with 'dev', 'trading', or 'tiktok'.\n"
+    "2. Only route to ONE specialist at a time per tool call.\n"
+    "3. When a specialist completes and triggers you again, review their response. If there are other specialists needed, call `route_task` with the next one.\n"
+    "4. Once all necessary specialists have completed their tasks, synthesize their outputs into a final consolidated briefing, and call `finish_delegation` to output it.\n\n"
+    "HARD SECURITY RULES:\n"
+    "1. Zero Financial Autonomy: NEVER independently execute any real trade. Warn immediately if trade execution is requested.\n"
+    "2. Credential Masking: Never leak API keys, passwords, or secret tokens in responses."
+)
+if adk_config and "orchestrator" in adk_config:
+    orch_model = adk_config["orchestrator"].get("model", orch_model)
+    orch_instruction = adk_config["orchestrator"].get("system_instruction", orch_instruction)
+
 orchestrator = Agent(
     name="NexusOrchestrator",
-    model="gemini-3.1-flash-lite",
-    instruction=(
-        "You are the central engine of NexusConcierge. Parse the core message details.\n"
-        "Process:\n"
-        "1. When the user makes a request, delegate tasks sequentially by calling the `route_task` tool with 'dev', 'trading', or 'tiktok'.\n"
-        "2. Only route to ONE specialist at a time per tool call.\n"
-        "3. When a specialist completes and triggers you again, review their response. If there are other specialists needed, call `route_task` with the next one.\n"
-        "4. Once all necessary specialists have completed their tasks, synthesize their outputs into a final consolidated briefing, and call `finish_delegation` to output it.\n\n"
-        "HARD SECURITY RULES:\n"
-        "1. Zero Financial Autonomy: NEVER independently execute any real trade. Warn immediately if trade execution is requested.\n"
-        "2. Credential Masking: Never leak API keys, passwords, or secret tokens in responses."
-    ),
+    model=orch_model,
+    instruction=orch_instruction,
     tools=[route_task, finish_delegation, manage_calendar_lock, get_daily_briefing]
 )
 
@@ -392,11 +333,12 @@ nexus_flow = Workflow(
 # =====================================================================
 # 7. Session Initialization (Long-Term State Memory)
 # =====================================================================
-async def init_session(db_service: DatabaseSessionService):
+async def init_session(db_service: DatabaseSessionService, user_id="developer_mesh", session_id="local_dev_test_session"):
+    # Using default 'developer_mesh' and 'local_dev_test_session' to ensure session-state persistence in SQLite
     session = await db_service.get_session(
         app_name="NexusConciergeApp",
-        user_id="developer_mesh",
-        session_id="local_dev_test_session"
+        user_id=user_id,
+        session_id=session_id
     )
     if not session:
         initial_state = {
@@ -420,19 +362,19 @@ async def init_session(db_service: DatabaseSessionService):
         }
         await db_service.create_session(
             app_name="NexusConciergeApp",
-            user_id="developer_mesh",
-            session_id="local_dev_test_session",
+            user_id=user_id,
+            session_id=session_id,
             state=initial_state
         )
-        print("💾 Initialized default session state and rules.")
+        print("[Database] Initialized default session state and rules.")
     else:
-        print("💾 Session state loaded successfully.")
+        print("[Database] Session state loaded successfully.")
 
 # =====================================================================
 # 8. Async System Runtime Execution
 # =====================================================================
-async def main_async(user_payload, db_session_service):
-    await init_session(db_session_service)
+async def main_async(user_payload, db_session_service, session_id="local_dev_test_session", user_id="developer_mesh"):
+    await init_session(db_session_service, user_id=user_id, session_id=session_id)
 
     runtime_runner = Runner(
         app_name="NexusConciergeApp",
@@ -450,8 +392,8 @@ async def main_async(user_payload, db_session_service):
         try:
             response_stream = runtime_runner.run_async(
                 new_message=user_payload,
-                session_id="local_dev_test_session",
-                user_id="developer_mesh"
+                session_id=session_id,
+                user_id=user_id
             )
             async for chunk in response_stream:
                 text = ""
@@ -482,10 +424,10 @@ async def main_async(user_payload, db_session_service):
             else:
                 raise
 
-    print("\n\n🏁 Execution Complete.")
+    print("\n\n[System] Execution Complete.")
 
 if __name__ == "__main__":
-    print("🚀 NexusConcierge System Pipeline Compiled Successfully.")
+    print("[System] NexusConcierge System Pipeline Compiled Successfully.")
     
     # Check if a custom command line argument is passed, otherwise use default test input
     user_query = (
