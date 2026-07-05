@@ -1054,10 +1054,10 @@ with tab_dag:
         edge [fontname="Inter, sans-serif", fontsize=9, color="#4A5568", fontcolor="#8b949e"];
 
         START   [label="▶  Start Node",                              fillcolor="#0d1117", fontcolor="#58a6ff",  color="#1f6feb"];
-        orch    [label="NexusOrchestrator\n(gemini-2.0-flash)", fillcolor="#0d1b2a", fontcolor="#90CDF4",  color="#1A365D"];
-        dev     [label="DevRelopsAgent\n(gemini-2.0-flash)",    fillcolor="#0a2318", fontcolor="#68D391",  color="#22543D"];
-        trading [label="QuantitativeRiskAgent\n(gemini-2.0-flash)", fillcolor="#1f1600", fontcolor="#FBD38D", color="#744210"];
-        tiktok  [label="CreativeAffiliateAgent\n(gemini-2.0-flash)", fillcolor="#1a0f30", fontcolor="#D6BCFA", color="#5C3C92"];
+        orch    [label="NexusOrchestrator\n(gemini-3.5-flash)", fillcolor="#0d1b2a", fontcolor="#90CDF4",  color="#1A365D"];
+        dev     [label="DevRelopsAgent\n(gemini-3.5-flash)",    fillcolor="#0a2318", fontcolor="#68D391",  color="#22543D"];
+        trading [label="QuantitativeRiskAgent\n(gemini-3.5-flash)", fillcolor="#1f1600", fontcolor="#FBD38D", color="#744210"];
+        tiktok  [label="CreativeAffiliateAgent\n(gemini-3.5-flash)", fillcolor="#1a0f30", fontcolor="#D6BCFA", color="#5C3C92"];
         final   [label="⏹  Collector\n(Terminal Node)",               fillcolor="#200a0a", fontcolor="#FEB2B2",  color="#742A2A"];
 
         START   -> orch;

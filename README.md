@@ -15,7 +15,7 @@ Rather than a single monolithic agent with too many tool options, NexusConcierge
        User Request / Streamlit Input
                      │
                      ▼
-             NexusOrchestrator (gemini-2.0-flash)
+             NexusOrchestrator (gemini-3.5-flash)
               ▲      ▲      ▲
               │      │      │
       ┌───────┴┐     │     ┌┴───────┐
