@@ -7,3 +7,4 @@ PyYAML
 google-auth-oauthlib
 google-api-python-client
 aiosqlite
+sqlalchemy>=2,<3

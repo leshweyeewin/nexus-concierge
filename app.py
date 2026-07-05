@@ -468,7 +468,7 @@ with tab_events:
 
     from helpers.google_calendar_helper import (
         fetch_calendar_events, credentials_available, oauth_connect_supported, run_oauth_flow,
-        DEV_COLOR_ID, TRADING_COLOR_ID,
+        is_connected, DEV_COLOR_ID, TRADING_COLOR_ID,
     )
 
     st.markdown("#### 📅 Google Calendar — Upcoming Events")
@@ -485,14 +485,21 @@ with tab_events:
         active_colors.add(DEV_COLOR_ID)
     if trading_on:
         active_colors.add(TRADING_COLOR_ID)
-    # Neither toggle on -> no color filter, show everything.
-    colors_param = active_colors or None
 
-    # Fetch (never blocks on interactive auth — see google_calendar_helper.py).
+    def _fetch_cal_result():
+        # Neither toggle on -> show nothing. This is a public deployment that may be
+        # connected to a real personal Google account; falling back to "no filter =
+        # show everything" would expose the user's whole real calendar (not just
+        # Dev/Trading-tagged events) to any visitor. Skip the API call entirely so no
+        # unfiltered event data is ever fetched, let alone rendered.
+        if not active_colors:
+            return {"events": [], "is_simulated": not is_connected(), "error": None}
+        return fetch_calendar_events(max_results=20, colors=active_colors)
+
     # Re-fetch whenever Refresh is clicked or either toggle changes.
     fetch_key = (20, tuple(sorted(active_colors)))
     if "cal_result" not in st.session_state or refresh or st.session_state.get("cal_fetch_key") != fetch_key:
-        st.session_state.cal_result    = fetch_calendar_events(max_results=20, colors=colors_param)
+        st.session_state.cal_result    = _fetch_cal_result()
         st.session_state.cal_fetch_key = fetch_key
 
     result      = st.session_state.cal_result
@@ -514,7 +521,7 @@ with tab_events:
                     try:
                         with st.spinner("Opening browser for Google sign-in…"):
                             run_oauth_flow()
-                        st.session_state.cal_result = fetch_calendar_events(max_results=20, colors=colors_param)
+                        st.session_state.cal_result = _fetch_cal_result()
                         st.success("Connected! Loading your real calendar…")
                         st.rerun()
                     except Exception as e:
@@ -538,7 +545,9 @@ with tab_events:
 
 **Color tags**: open an event in Google Calendar → the color-swatch icon → pick
 **Basil** (deep green) for 🟢 **Dev Events**, or **Sage** (pistachio) for 🫒
-**Trading Events**. Toggle either category above, or turn both off to see everything.
+**Trading Events**. Toggle either category above to see it here — with both off,
+nothing is shown (this only ever displays Dev/Trading-tagged events, never your
+full real calendar).
 """)
         if result.get("error"):
             with st.expander("Debug: last connection error", expanded=False):
@@ -551,7 +560,7 @@ with tab_events:
         elif trading_on:
             conn_note = " · filtered to 🫒 Trading Events only"
         else:
-            conn_note = " · showing all events"
+            conn_note = " · no category selected — showing nothing"
         st.markdown(f"""
 <span class="badge" style="background:#3fb95022;color:#3fb950;border-color:#3fb95055;">✅ CONNECTED</span>
 <span style="color:#8b949e;font-size:12px;">Showing live events from your Google Calendar{conn_note}</span>
@@ -572,10 +581,11 @@ with tab_events:
     st.markdown("---")
 
     if not events:
-        if colors_param and not is_simulated:
+        if not active_colors:
+            st.info("Turn on 🟢 Dev Events and/or 🫒 Trading Events above to see calendar entries.")
+        elif not is_simulated:
             st.info("No matching color-tagged events found. Color-tag an event in Google "
-                     "Calendar (Basil for Dev, Sage for Trading), or turn off both toggles "
-                     "above to see all events.")
+                     "Calendar (Basil for Dev, Sage for Trading) to see it here.")
         else:
             st.info("No upcoming events found in your Google Calendar.")
     else:
@@ -629,11 +639,16 @@ with tab_events:
 
     from helpers import gmail_helper
 
+    # Search query is fixed, not editable: this app is a public deployment that may be
+    # connected to a real personal Gmail account, and a free-text search box would let
+    # any visitor broaden the query to read arbitrary real emails, not just meetup invites.
+    gmail_query = gmail_helper.DEFAULT_QUERY
     col_q, col_gref = st.columns([5, 1])
     with col_q:
-        gmail_query = st.text_input(
-            "Search query", value=gmail_helper.DEFAULT_QUERY, key="gmail_query",
-            label_visibility="collapsed",
+        st.text_input(
+            "Search query", value=gmail_query, key="gmail_query_display",
+            label_visibility="collapsed", disabled=True,
+            help="Fixed to meetup/event invites only — not editable, to avoid exposing other Gmail content.",
         )
     with col_gref:
         gmail_refresh = st.button("🔄 Refresh", key="gmail_refresh", use_container_width=True)
