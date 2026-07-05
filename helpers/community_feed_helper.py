@@ -83,12 +83,13 @@ def _fetch_telegram(feed_info: dict) -> dict:
 
 
 TRADING_TELEGRAM_CHANNELS = {
-    "tigerbrokersoptions": {"source": "Tiger Brokers Options", "channel": "TigerBrokersOptions"},
-    "thesafeinvestor2": {"source": "The Safe Investor", "channel": "thesafeinvestor2"},
+    # Note: Telegram's public web preview (t.me/s/<name>) only exists for broadcast
+    # channels, never for groups — group content is never readable without an
+    # authenticated login, regardless of scraping approach. "Tiger Brokers Options",
+    # "The Safe Investor", "Tiger Options Camp", and "TB CashBoost" were confirmed to
+    # be groups (removed here) rather than channels, so they always showed OFFLINE.
     "stocktradingandanalysis": {"source": "Stock Trading & Analysis", "channel": "stocktradingandanalysis"},
     "poemsta": {"source": "POEMS TA", "channel": "POEMSTA"},
-    "tigeroptionscamp": {"source": "Tiger Options Camp", "channel": "TigerOptionsCamp"},
-    "tbcashboost": {"source": "TB CashBoost", "channel": "TBCashBoost"},
 }
 
 

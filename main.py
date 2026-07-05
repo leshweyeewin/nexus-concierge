@@ -416,8 +416,13 @@ async def main_async(user_payload, db_session_service, session_id="local_dev_tes
     """
     await init_session(db_session_service, user_id=user_id, session_id=session_id)
 
-    MAX_RETRIES = 4
-    RETRY_DELAY_S = 35  # Free tier 429s suggest retrying after ~30s
+    # Each user turn takes ~4 sequential Gemini calls (orchestrator route -> specialist
+    # tool-call -> specialist synthesis -> orchestrator finish), so free-tier per-minute
+    # quota is easy to hit. Kept short/shallow on purpose: a long retry cascade (the
+    # previous 4 attempts * up to 35s*attempt backoff could run ~3.5 minutes) just makes
+    # a quota problem look like a hang. One quick retry surfaces the real quota error fast.
+    MAX_RETRIES = 2
+    RETRY_DELAY_S = 20  # Free tier 429s are typically per-minute; ~20s covers a partial window
 
     for attempt in range(1, MAX_RETRIES + 1):
         try:
@@ -489,7 +494,10 @@ async def main_async(user_payload, db_session_service, session_id="local_dev_tes
                     await asyncio.sleep(wait)
                 else:
                     yield {"kind": "trace", "author": "System",
-                           "message": f"[ERROR] Request failed after {MAX_RETRIES} retries due to quota or overload."}
+                           "message": (f"[ERROR] Gemini API quota/rate limit exceeded after {MAX_RETRIES} attempts. "
+                                       f"This is a free-tier request-per-minute cap, not a bug in this request — "
+                                       f"wait about a minute and try again, or enable Cloud Billing on the API "
+                                       f"key's project for higher limits.")}
                     raise
             else:
                 raise

@@ -771,12 +771,12 @@ full real calendar).
        style="font-size:11px;color:#58a6ff;text-decoration:none;">🔗 View source</a></div>
 </div>""", unsafe_allow_html=True)
 
-    # ── Trading Feeds — Telegram + X/Twitter ────────────────────────────────
+    # ── Trading Feeds — Telegram ─────────────────────────────────────────────
     st.markdown("---")
-    st.markdown("#### 💹 Trading Feeds — Telegram & X")
-    st.caption("Live scrape of the trading Telegram channels and X/Twitter accounts you follow. "
-               "Both are unofficial, no-login scrapes — if a source blocks us or has its preview "
-               "disabled, it's shown as offline with a link straight to the source, never a guessed post.")
+    st.markdown("#### 💹 Trading Feeds — Telegram")
+    st.caption("Live scrape of the trading Telegram channels you follow. Unofficial, no-login "
+               "scrape — if a channel blocks us or has its preview disabled, it's shown as "
+               "offline with a link straight to the source, never a guessed post.")
 
     trading_feed_refresh = st.button("🔄 Refresh Trading Feeds", key="trading_feed_refresh")
     if "trading_tg_result" not in st.session_state or trading_feed_refresh:
@@ -816,11 +816,6 @@ full real calendar).
     st.markdown("**📢 Telegram — Trading Channels**")
     for feed in st.session_state.trading_tg_result:
         _render_trading_feed_card(feed)
-    st.markdown("""
-<div class="nc-card" style="border-color:#2b3340;">
-  <span class="badge" style="background:#30363d;color:#8b949e;border-color:#434c56;">🐦 X / Twitter</span>
-  <span style="color:#8b949e;font-size:13px;">X/Twitter scraping is not available — direct web scraping of X requires authentication. Follow trading accounts directly at x.com.</span>
-</div>""", unsafe_allow_html=True)
 
 
 # ════════════════════════════════════════════════════════════════════════════════
