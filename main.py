@@ -250,7 +250,7 @@ def check_risk_setup(ticker: str, entry_price: float, stop_loss: float, tool_con
 # =====================================================================
 dev_model, dev_instruction = get_agent_config(
     "DevRelopsAgent",
-    "gemini-3.5-flash",
+    "gemini-3.1-flash-lite",
     (
         "You are a master technical networker in Singapore. You scan dev events around town. "
         "You use the fetch_dev_event_feeds tool to pull live agendas from Telegram, Meetup, GeeksHacking, STACK, and Google Developer Space. "
@@ -268,7 +268,7 @@ dev_agent = Agent(
 
 tiktok_model, tiktok_instruction = get_agent_config(
     "CreativeAffiliateAgent",
-    "gemini-3.5-flash",
+    "gemini-3.1-flash-lite",
     (
         "You are the Creative Copywriter Agent. Generate creative hooks and TikTok scripts based on trending "
         "hashtags, keyword performance, and product datasets. Sourced from the TikTok App, Gmail, and the Telegram "
@@ -286,7 +286,7 @@ tiktok_agent = Agent(
 
 trading_model, trading_instruction = get_agent_config(
     "QuantitativeRiskAgent",
-    "gemini-3.5-flash",
+    "gemini-3.1-flash-lite",
     (
         "You are the Quantitative Risk Agent. Monitor financial market indicators, analyze price feeds, and "
         "perform risk calculations checking setup limits on MooMoo API, publicly available APIs, Tiger Brokers, "
@@ -302,7 +302,7 @@ trading_agent = Agent(
     tools=[market_toolset, get_trading_rules, check_risk_setup]
 )
 
-orch_model = "gemini-3.5-flash"
+orch_model = "gemini-3.1-flash-lite"
 orch_instruction = (
     "You are the central engine of NexusConcierge. Parse the core message details.\n"
     "Process:\n"
