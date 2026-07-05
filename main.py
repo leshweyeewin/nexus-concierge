@@ -1,6 +1,5 @@
 import os
 import sys
-import json
 import asyncio
 import yaml
 from google.genai.types import Content, Part
@@ -235,9 +234,12 @@ def get_trading_rules(tool_context: ToolContext) -> str:
 
 def check_risk_setup(ticker: str, entry_price: float, stop_loss: float, tool_context: ToolContext) -> str:
     """Checks if a proposed asset trade setup crosses maximum loss thresholds (Trading Rule Engine)."""
+    if entry_price <= 0:
+        return f"ERROR: entry_price must be a positive number, got {entry_price}."
+
     rules = tool_context.state.setdefault('trading_parameters', {})
     max_loss = rules.get("max_loss_limit", 0.02)
-    
+
     implied_loss = (entry_price - stop_loss) / entry_price
     if implied_loss > max_loss:
         return f"RISK ALERT: Trade setup for {ticker} crosses personal loss threshold! Implied loss: {implied_loss:.2%}, limit is {max_loss:.2%}. Setup rejected."

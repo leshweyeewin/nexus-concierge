@@ -97,10 +97,17 @@ if args.server == "events":
     @mcp.tool(name="create_google_calendar_event", description="Adds a new event (e.g. tech meetup, networking session) directly to the user's Google Calendar.")
     def create_google_calendar_event(summary: str, start_time_iso: str, end_time_iso: str, description: str = "") -> str:
         try:
-            from googleapiclient.discovery import build
             creds = get_google_credentials()
+        except FileNotFoundError:
+            # No credentials.json configured yet — clearly-labeled simulated write,
+            # consistent with the read-tool fallbacks above.
+            return (f"Successfully created Google Calendar Event (SIMULATED / no credentials.json)! "
+                    f"Summary: '{summary}' | Link: https://calendar.google.com/calendar/event?eid=mock_created_event")
+
+        try:
+            from googleapiclient.discovery import build
             service = build('calendar', 'v3', credentials=creds)
-            
+
             event = {
                 'summary': summary,
                 'description': description,
@@ -113,11 +120,14 @@ if args.server == "events":
                     'timeZone': 'Asia/Singapore',
                 }
             }
-            
+
             created_event = service.events().insert(calendarId='primary', body=event).execute()
             return f"Successfully created Google Calendar Event! Summary: '{summary}' | Link: {created_event.get('htmlLink')}"
         except Exception as e:
-            return f"Successfully created Google Calendar Event (SIMULATED / API Fallback)! Summary: '{summary}' | Link: https://calendar.google.com/calendar/event?eid=mock_created_event"
+            # A real, connected account failed to write (bad time format, quota, revoked
+            # token, etc.) — surface the actual error instead of reporting a fake success,
+            # since the user would otherwise believe an event was created when it wasn't.
+            return f"ERROR: Failed to create Google Calendar event '{summary}': {e}"
 
     @mcp.tool(name="search_gmail_emails", description="Searches the user's real Gmail inbox using Google API client for tech events or meetups.")
     def search_gmail_emails(query: str = "meetup", max_results: int = 5) -> str:

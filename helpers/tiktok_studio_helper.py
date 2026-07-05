@@ -14,9 +14,12 @@ function degrades gracefully and labels what it could and couldn't fetch, rather
 import os
 import re
 import json
+import ipaddress
+import socket
 import urllib.request
+from urllib.parse import urlparse
 
-MODEL_NAME = "gemini-3.1-flash-lite"
+MODEL_NAME = "gemini-2.5-flash"
 
 _HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
@@ -32,7 +35,25 @@ def _get_client():
     return Client(api_key=api_key)
 
 
+def _assert_public_http_url(url: str) -> None:
+    """Reject anything but http(s) URLs resolving to a public address, so a pasted
+    link can't be used to make this server-side fetch hit internal/loopback
+    services (SSRF) — these fields take arbitrary user-typed URLs."""
+    parsed = urlparse(url)
+    if parsed.scheme not in ("http", "https") or not parsed.hostname:
+        raise ValueError("Only http/https URLs are allowed.")
+    try:
+        addrs = socket.getaddrinfo(parsed.hostname, None)
+    except socket.gaierror as e:
+        raise ValueError(f"Could not resolve host: {e}")
+    for family, _, _, _, sockaddr in addrs:
+        ip = ipaddress.ip_address(sockaddr[0])
+        if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved or ip.is_multicast:
+            raise ValueError("URL resolves to a non-public address.")
+
+
 def _fetch_html(url: str, timeout: int = 8) -> str:
+    _assert_public_http_url(url)
     req = urllib.request.Request(url, headers=_HEADERS)
     with urllib.request.urlopen(req, timeout=timeout) as resp:
         raw = resp.read()

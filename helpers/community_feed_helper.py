@@ -9,9 +9,7 @@ directly from Streamlit, so the Events Hub tab can show the same live data the
 DevRelopsAgent sees in chat, without spinning up the MCP subprocess.
 """
 
-import os
 import re
-import json
 import html
 import urllib.request
 
