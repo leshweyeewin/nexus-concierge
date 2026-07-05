@@ -112,6 +112,15 @@ def _load_silent_credentials():
     return None
 
 
+def is_headless_cloud_host() -> bool:
+    """True when running on a remote host with no local browser to complete the
+    installed-app OAuth loopback redirect (e.g. Render, Heroku, Cloud Run). Render
+    sets RENDER=true for every service; the others are common equivalents.
+    Used to disable the 'Connect' button instead of hanging the request forever
+    waiting on a callback nothing can ever deliver."""
+    return any(os.environ.get(v) for v in ("RENDER", "DYNO", "K_SERVICE", "WEBSITE_INSTANCE_ID"))
+
+
 def run_oauth_flow():
     """Explicitly run the interactive browser OAuth consent flow and persist token.json.
 
@@ -119,6 +128,13 @@ def run_oauth_flow():
     never automatically during a page render.
     """
     from google_auth_oauthlib.flow import InstalledAppFlow
+
+    if is_headless_cloud_host():
+        raise RuntimeError(
+            "Interactive OAuth isn't available on this deployment (no local browser can "
+            "complete the sign-in redirect). Run this app locally to connect a real Google "
+            "account, or provide a pre-authorized token.json via a Secret File."
+        )
 
     if not os.path.exists(CREDENTIALS_PATH):
         raise FileNotFoundError(
@@ -212,3 +228,10 @@ def fetch_calendar_events(max_results: int = 15, colors=None) -> dict:
 def credentials_available() -> bool:
     """Return True if credentials.json exists, so the Connect button can be shown."""
     return os.path.exists(CREDENTIALS_PATH)
+
+
+def oauth_connect_supported() -> bool:
+    """Return True only if a real 'Connect' click could actually complete: credentials.json
+    is present AND we're not on a headless cloud host with no local browser to finish the
+    OAuth redirect."""
+    return credentials_available() and not is_headless_cloud_host()

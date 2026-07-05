@@ -467,7 +467,7 @@ with tab_events:
     st.markdown("---")
 
     from helpers.google_calendar_helper import (
-        fetch_calendar_events, credentials_available, run_oauth_flow,
+        fetch_calendar_events, credentials_available, oauth_connect_supported, run_oauth_flow,
         DEV_COLOR_ID, TRADING_COLOR_ID,
     )
 
@@ -509,7 +509,7 @@ with tab_events:
   <span style="color:#c9d1d9;font-size:13px;">Not connected to your real Google Calendar — showing demo events below.</span>
 </div>""", unsafe_allow_html=True)
         with action_col:
-            if credentials_available():
+            if oauth_connect_supported():
                 if st.button("🔗 Connect Google Calendar", key="cal_connect", use_container_width=True):
                     try:
                         with st.spinner("Opening browser for Google sign-in…"):
@@ -519,6 +519,11 @@ with tab_events:
                         st.rerun()
                     except Exception as e:
                         st.error(f"Authorisation failed: {e}")
+            elif credentials_available():
+                st.button("🔗 Connect (unavailable on this host)", key="cal_connect_disabled",
+                          use_container_width=True, disabled=True,
+                          help="This deployment can't complete an interactive Google sign-in "
+                               "(no local browser). Run the app locally to connect a real account.")
             else:
                 st.button("🔗 Connect (needs credentials.json)", key="cal_connect_disabled",
                           use_container_width=True, disabled=True)
@@ -652,7 +657,7 @@ with tab_events:
   <span style="color:#c9d1d9;font-size:13px;">Not connected to Gmail — showing demo invites below.</span>
 </div>""", unsafe_allow_html=True)
         with gaction_col:
-            if credentials_available():
+            if oauth_connect_supported():
                 if st.button("🔗 Connect Gmail", key="gmail_connect", use_container_width=True):
                     try:
                         with st.spinner("Opening browser for Google sign-in…"):
@@ -663,6 +668,11 @@ with tab_events:
                         st.rerun()
                     except Exception as e:
                         st.error(f"Authorisation failed: {e}")
+            elif credentials_available():
+                st.button("🔗 Connect (unavailable on this host)", key="gmail_connect_disabled",
+                          use_container_width=True, disabled=True,
+                          help="This deployment can't complete an interactive Google sign-in "
+                               "(no local browser). Run the app locally to connect a real account.")
             else:
                 st.button("🔗 Connect (needs credentials.json)", key="gmail_connect_disabled",
                           use_container_width=True, disabled=True)

@@ -6,3 +6,6 @@ __pycache__/
 # Google OAuth credentials - never commit these
 credentials.json
 token*.json
+
+# Streamlit local secrets (if ever used) - never commit these
+.streamlit/secrets.toml

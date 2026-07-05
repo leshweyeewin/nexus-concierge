@@ -88,7 +88,7 @@ events_toolset = MaskingMcpToolset(
             args=["mcp_servers.py", "--server", "events"],
             env=_mcp_env
         ),
-        timeout=30.0,  # default (5s) isn't enough for subprocess startup + live scrape/API calls
+        timeout=45.0,  # default (5s) isn't enough for subprocess startup + live scrape/API calls; extra headroom for slower cloud/free-tier CPU
     )
 )
 
@@ -99,7 +99,7 @@ tiktok_toolset = MaskingMcpToolset(
             args=["mcp_servers.py", "--server", "tiktok"],
             env=_mcp_env
         ),
-        timeout=30.0,  # default (5s) isn't enough for subprocess startup + live scrape/API calls
+        timeout=45.0,  # default (5s) isn't enough for subprocess startup + live scrape/API calls; extra headroom for slower cloud/free-tier CPU
     )
 )
 
@@ -110,7 +110,7 @@ market_toolset = MaskingMcpToolset(
             args=["mcp_servers.py", "--server", "market"],
             env=_mcp_env
         ),
-        timeout=30.0,  # default (5s) isn't enough for subprocess startup + live scrape/API calls
+        timeout=45.0,  # default (5s) isn't enough for subprocess startup + live scrape/API calls; extra headroom for slower cloud/free-tier CPU
     )
 )
 
@@ -442,7 +442,9 @@ async def main_async(user_payload, db_session_service, session_id="local_dev_tes
 
                 try:
                     for fc in chunk.get_function_calls():
-                        args_str = ", ".join(f"{k}={v!r}" for k, v in (fc.args or {}).items())
+                        args_str = mask_credentials(
+                            ", ".join(f"{k}={v!r}" for k, v in (fc.args or {}).items())
+                        )
                         yield {"kind": "trace", "author": author, "tool_name": fc.name,
                                "message": f"🛠️ Calling `{fc.name}({args_str})`"}
                     for fr in chunk.get_function_responses():
