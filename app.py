@@ -32,113 +32,123 @@ st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700&display=swap');
 
-html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
+html, body, [class*="css"] { font-family: 'Inter', sans-serif; -webkit-font-smoothing: antialiased; }
 
-* { scrollbar-width: thin; scrollbar-color: #30363d transparent; }
+* { scrollbar-width: thin; scrollbar-color: #3d4451 transparent; }
 ::-webkit-scrollbar { width: 8px; height: 8px; }
-::-webkit-scrollbar-thumb { background: #30363d; border-radius: 8px; }
-::-webkit-scrollbar-thumb:hover { background: #484f58; }
+::-webkit-scrollbar-thumb { background: #3d4451; border-radius: 8px; }
+::-webkit-scrollbar-thumb:hover { background: #565f6e; }
 
 .stApp {
     background:
-        radial-gradient(circle at 15% 0%, rgba(31,111,235,0.08) 0%, transparent 35%),
-        radial-gradient(circle at 85% 10%, rgba(139,148,158,0.05) 0%, transparent 40%),
-        #0d1117;
-    color: #c9d1d9;
+        radial-gradient(circle at 12% 0%, rgba(88,166,255,0.10) 0%, transparent 38%),
+        radial-gradient(circle at 88% 6%, rgba(163,113,247,0.09) 0%, transparent 42%),
+        radial-gradient(circle at 50% 100%, rgba(63,185,80,0.05) 0%, transparent 45%),
+        #0b0f16;
+    color: #d7dee6;
 }
-.main  { color: #c9d1d9; }
+.main  { color: #d7dee6; }
 section[data-testid="stSidebar"] {
-    background-color: #10151c;
-    border-right: 1px solid #21262d;
+    background-color: #0d1219;
+    border-right: 1px solid #232a35;
 }
 
 h1, h2, h3 {
-    color: #58a6ff !important;
+    background: linear-gradient(90deg, #79bbff 0%, #58a6ff 45%, #a371f7 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
     font-family: 'Outfit', 'Inter', sans-serif;
     font-weight: 700;
-    letter-spacing: -0.01em;
+    letter-spacing: -0.015em;
 }
 
 /* Tabs */
 .stTabs [data-baseweb="tab-list"]      { gap: 6px; background: transparent; }
-.stTabs [data-baseweb="tab"]           { background:#161b22; border:1px solid #30363d;
-                                         border-radius:8px 8px 0 0; color:#8b949e;
-                                         padding:9px 20px; font-weight:500;
-                                         transition: all .15s ease; }
-.stTabs [data-baseweb="tab"]:hover     { color:#c9d1d9; background:#1c2129; }
-.stTabs [aria-selected="true"]         { background:#21262d !important; color:#58a6ff !important;
+.stTabs [data-baseweb="tab"]           { background:#151b24; border:1px solid #262d38;
+                                         border-radius:10px 10px 0 0; color:#8b98a9;
+                                         padding:10px 22px; font-weight:500;
+                                         transition: all .18s ease; }
+.stTabs [data-baseweb="tab"]:hover     { color:#e6edf3; background:#1b222c; transform: translateY(-1px); }
+.stTabs [aria-selected="true"]         { background:#1c2430 !important; color:#79bbff !important;
                                          border-bottom:2px solid #58a6ff !important;
-                                         box-shadow: 0 -2px 12px rgba(88,166,255,0.12); }
+                                         box-shadow: 0 -4px 18px rgba(88,166,255,0.18); }
 
 /* Buttons */
-.stButton>button { background:#21262d; color:#c9d1d9; border:1px solid #30363d;
-                   border-radius:8px; font-weight:500; transition:all .15s ease; }
-.stButton>button:hover { background:#30363d; border-color:#58a6ff; color:#fff;
-                          box-shadow: 0 0 0 3px rgba(88,166,255,0.15); transform: translateY(-1px); }
+.stButton>button { background:#1a212b; color:#d7dee6; border:1px solid #2b3340;
+                   border-radius:10px; font-weight:500; transition:all .18s ease; }
+.stButton>button:hover { background:linear-gradient(135deg,#1f6feb 0%,#7b52e0 100%);
+                          border-color:transparent; color:#fff;
+                          box-shadow: 0 4px 20px rgba(88,166,255,0.28); transform: translateY(-1px); }
 .stButton>button:active { transform: translateY(0); }
 
 /* Inputs */
 .stTextInput>div>div>input, .stTextArea textarea {
-    background:#161b22 !important; border:1px solid #30363d !important;
-    border-radius:8px !important; color:#e6edf3 !important;
-    transition: border-color .15s ease;
+    background:#141a23 !important; border:1px solid #2b3340 !important;
+    border-radius:10px !important; color:#e6edf3 !important;
+    transition: border-color .18s ease, box-shadow .18s ease;
 }
 .stTextInput>div>div>input:focus, .stTextArea textarea:focus {
-    border-color:#58a6ff !important; box-shadow: 0 0 0 3px rgba(88,166,255,0.15) !important;
+    border-color:#58a6ff !important; box-shadow: 0 0 0 3px rgba(88,166,255,0.18) !important;
 }
 
 /* ── Custom cards ─────────────────────────────────────────────────────── */
 .nc-card {
-    background: #161b22;
-    border: 1px solid #21262d;
-    border-radius: 12px;
-    padding: 14px 18px;
+    background: linear-gradient(160deg, #161d27 0%, #131820 100%);
+    border: 1px solid #232a35;
+    border-radius: 14px;
+    padding: 16px 20px;
     margin-bottom: 10px;
-    transition: border-color .15s ease, transform .15s ease;
+    box-shadow: 0 1px 0 rgba(255,255,255,0.02) inset;
+    transition: border-color .18s ease, transform .18s ease, box-shadow .18s ease;
 }
-.nc-card:hover { border-color:#30363d; }
+.nc-card:hover { border-color:#3d4657; transform: translateY(-1px);
+                  box-shadow: 0 8px 24px rgba(0,0,0,0.30); }
 .nc-cal-card {
-    background: linear-gradient(135deg, #0d1b2a 0%, #161b22 100%);
-    border: 1px solid #1f6feb;
+    background: linear-gradient(135deg, #0e1c2e 0%, #151c26 100%);
+    border: 1px solid #2451a3;
     border-left: 4px solid #58a6ff;
-    border-radius: 12px;
-    padding: 14px 18px;
+    border-radius: 14px;
+    padding: 16px 20px;
     margin-bottom: 10px;
-    transition: transform .15s ease, box-shadow .15s ease;
+    transition: transform .18s ease, box-shadow .18s ease;
 }
-.nc-cal-card:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.35); }
-.nc-cal-card h4 { color: #e6edf3 !important; margin:0 0 4px 0; font-size:15px; }
-.nc-cal-card .meta { color: #8b949e; font-size: 12px; margin-top:4px; }
+.nc-cal-card:hover { transform: translateY(-2px); box-shadow: 0 10px 28px rgba(0,0,0,0.4); }
+.nc-cal-card h4 { color: #eef2f6 !important; margin:0 0 4px 0; font-size:15px; }
+.nc-cal-card .meta { color: #8b98a9; font-size: 12px; margin-top:4px; }
 .nc-cal-card .badge, .badge {
     display: inline-block;
     background: #1f6feb22;
-    color: #58a6ff;
+    color: #79bbff;
     border: 1px solid #1f6feb55;
     border-radius: 20px;
-    padding: 2px 10px;
+    padding: 3px 11px;
     font-size: 11px;
     font-weight: 600;
     margin-right: 6px;
+    letter-spacing: 0.01em;
 }
 
 .nc-kpi {
-    background: linear-gradient(160deg, #171d27 0%, #161b22 100%);
-    border: 1px solid #21262d;
-    border-radius: 12px;
-    padding: 18px 16px;
+    background: linear-gradient(160deg, #182130 0%, #131820 100%);
+    border: 1px solid #232a35;
+    border-radius: 14px;
+    padding: 20px 16px;
     text-align: center;
-    transition: transform .15s ease, border-color .15s ease;
+    transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease;
 }
-.nc-kpi:hover { transform: translateY(-2px); border-color:#30363d; }
-.nc-kpi .val  { font-size: 30px; font-weight: 700; color: #58a6ff; font-family:'Outfit',sans-serif; }
-.nc-kpi .lbl  { font-size: 12px; color: #8b949e; margin-top: 4px; }
+.nc-kpi:hover { transform: translateY(-2px); border-color:#3d4657; box-shadow: 0 8px 24px rgba(0,0,0,0.3); }
+.nc-kpi .val  { font-size: 32px; font-weight: 700; background: linear-gradient(90deg,#79bbff,#a371f7);
+                -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent;
+                font-family:'Outfit',sans-serif; }
+.nc-kpi .lbl  { font-size: 12px; color: #8b98a9; margin-top: 4px; }
 .nc-kpi .delta-pos { color: #3fb950; font-size: 12px; }
 .nc-kpi .delta-neg { color: #f85149; font-size: 12px; }
 
 .nc-product-row {
-    background: #161b22;
-    border: 1px solid #21262d;
-    border-radius: 8px;
+    background: #161d27;
+    border: 1px solid #232a35;
+    border-radius: 10px;
     padding: 12px 16px;
     margin-bottom: 8px;
     display: flex;
@@ -147,32 +157,44 @@ h1, h2, h3 {
 }
 .nc-tag {
     display: inline-block;
-    background: #21262d;
-    color: #8b949e;
-    border: 1px solid #30363d;
+    background: #1e2530;
+    color: #8b98a9;
+    border: 1px solid #2b3340;
     border-radius: 20px;
     padding: 2px 10px;
     font-size: 12px;
     margin: 2px;
 }
-.nc-tag-blue  { background:#1f6feb22; color:#58a6ff; border-color:#1f6feb55; }
-.nc-tag-green { background:#238636; color:#3fb950; border-color:#3fb95055; }
+.nc-tag-blue  { background:#1f6feb22; color:#79bbff; border-color:#1f6feb55; }
+.nc-tag-green { background:#23863622; color:#3fb950; border-color:#3fb95055; }
 .nc-tag-purple{ background:#6e40c922; color:#d2a8ff; border-color:#8957e555; }
 
 /* Sidebar compact styles */
-.sb-lock  { background:#21262d; border-radius:6px; padding:4px 10px;
+.sb-lock  { background:#1e2530; border-radius:6px; padding:4px 10px;
             font-size:12px; color:#f0883e; margin:2px 0; display:inline-block; }
-.sb-hook  { background:#161b22; border-left:3px solid #58a6ff;
-            border-radius:0 6px 6px 0; padding:8px 12px; margin-bottom:8px;
-            font-style:italic; color:#c9d1d9; font-size:13px; }
+.sb-hook  { background:#161d27; border-left:3px solid #58a6ff;
+            border-radius:0 8px 8px 0; padding:9px 12px; margin-bottom:8px;
+            font-style:italic; color:#d7dee6; font-size:13px; }
 .sb-conv  { font-size:11px; color:#3fb950; margin-top:4px; }
 
 /* Metrics */
 [data-testid="stMetric"] {
-    background:#161b22; border:1px solid #21262d; border-radius:12px;
-    padding:12px 16px; transition: border-color .15s ease;
+    background:#161d27; border:1px solid #232a35; border-radius:14px;
+    padding:14px 18px; transition: border-color .18s ease, transform .18s ease;
 }
-[data-testid="stMetric"]:hover { border-color:#30363d; }
+[data-testid="stMetric"]:hover { border-color:#3d4657; transform: translateY(-1px); }
+
+/* Live-status pulse dot (used next to "LIVE" badges throughout the app) */
+.nc-pulse {
+    display:inline-block; width:7px; height:7px; border-radius:50%;
+    background:#3fb950; margin-right:5px; box-shadow:0 0 0 rgba(63,185,80,0.5);
+    animation: nc-pulse-anim 2s infinite;
+}
+@keyframes nc-pulse-anim {
+    0%   { box-shadow: 0 0 0 0 rgba(63,185,80,0.5); }
+    70%  { box-shadow: 0 0 0 6px rgba(63,185,80,0); }
+    100% { box-shadow: 0 0 0 0 rgba(63,185,80,0); }
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -230,15 +252,19 @@ def _fmt_dt(iso_str: str, is_all_day: bool) -> str:
 
 # ── Header ─────────────────────────────────────────────────────────────────────
 st.markdown("""
-<div style="display:flex;align-items:center;gap:14px;padding-bottom:6px;">
-  <span style="font-size:38px;filter:drop-shadow(0 0 10px rgba(88,166,255,0.35));">🌟</span>
-  <div>
-    <h1 style="margin:0;font-size:29px;font-family:'Outfit',sans-serif;">NexusConcierge OS</h1>
-    <p style="margin:0;color:#8b949e;font-size:13px;">Cross-Domain Multi-Agent Life Engine &nbsp;·&nbsp; Google ADK &amp; FastMCP</p>
+<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:14px;
+            padding:18px 24px;margin-bottom:4px;border-radius:16px;
+            background:linear-gradient(135deg, rgba(31,111,235,0.10) 0%, rgba(123,82,224,0.08) 100%);
+            border:1px solid #232a35;">
+  <div style="display:flex;align-items:center;gap:14px;">
+    <span style="font-size:40px;filter:drop-shadow(0 0 12px rgba(88,166,255,0.4));">🌟</span>
+    <div>
+      <h1 style="margin:0;font-size:30px;font-family:'Outfit',sans-serif;">NexusConcierge OS</h1>
+      <p style="margin:2px 0 0;color:#8b98a9;font-size:13px;">Cross-Domain Multi-Agent Life Engine &nbsp;·&nbsp; Google ADK &amp; FastMCP</p>
+    </div>
   </div>
+  <div><span class="nc-pulse"></span><span style="color:#3fb950;font-size:12px;font-weight:600;">SYSTEM ONLINE</span></div>
 </div>
-<div style="height:1px;margin:12px 0 16px;
-            background:linear-gradient(90deg, #1f6feb 0%, #21262d 40%, transparent 100%);"></div>
 """, unsafe_allow_html=True)
 
 # ── Sidebar — Demo Panel ───────────────────────────────────────────────────────
@@ -440,7 +466,7 @@ with tab_events:
                "and live Singapore dev-community feeds (Telegram, Meetup, and more).")
     st.markdown("---")
 
-    from google_calendar_helper import (
+    from helpers.google_calendar_helper import (
         fetch_calendar_events, credentials_available, run_oauth_flow,
         DEV_COLOR_ID, TRADING_COLOR_ID,
     )
@@ -596,7 +622,7 @@ with tab_events:
     st.markdown("---")
     st.markdown("#### 📧 Gmail — Meetup Invites")
 
-    import gmail_helper
+    from helpers import gmail_helper
 
     col_q, col_gref = st.columns([5, 1])
     with col_q:
@@ -678,7 +704,7 @@ with tab_events:
     st.caption("Live scrape of Singapore dev-community sources — same feeds DevRelopsAgent "
                "uses for fetch_dev_event_feeds in chat.")
 
-    import community_feed_helper
+    from helpers import community_feed_helper
 
     feed_refresh = st.button("🔄 Refresh Feeds", key="feed_refresh")
     if "feed_result" not in st.session_state or feed_refresh:
@@ -720,12 +746,69 @@ with tab_events:
        style="font-size:11px;color:#58a6ff;text-decoration:none;">🔗 View source</a></div>
 </div>""", unsafe_allow_html=True)
 
+    # ── Trading Feeds — Telegram + X/Twitter ────────────────────────────────
+    st.markdown("---")
+    st.markdown("#### 💹 Trading Feeds — Telegram & X")
+    st.caption("Live scrape of the trading Telegram channels and X/Twitter accounts you follow. "
+               "Both are unofficial, no-login scrapes — if a source blocks us or has its preview "
+               "disabled, it's shown as offline with a link straight to the source, never a guessed post.")
+
+    from helpers import twitter_feed_helper
+
+    trading_feed_refresh = st.button("🔄 Refresh Trading Feeds", key="trading_feed_refresh")
+    if "trading_tg_result" not in st.session_state or trading_feed_refresh:
+        with st.spinner("Scraping trading Telegram channels…"):
+            st.session_state.trading_tg_result = community_feed_helper.fetch_trading_feeds()
+    if "trading_tw_result" not in st.session_state or trading_feed_refresh:
+        with st.spinner("Scraping followed X/Twitter accounts…"):
+            st.session_state.trading_tw_result = twitter_feed_helper.fetch_twitter_feeds()
+
+    def _render_trading_feed_card(feed: dict) -> None:
+        is_live = feed.get("live_status") == "live"
+        status_html = (
+            '<span class="badge" style="background:#3fb95022;color:#3fb950;border-color:#3fb95055;">🟢 LIVE</span>'
+            if is_live else
+            '<span class="badge" style="background:#f0883e22;color:#f0883e;border-color:#f0883e55;">🔌 OFFLINE</span>'
+        )
+        if feed.get("posts"):
+            body_html = "".join(
+                f'<div style="margin-top:6px;font-size:13px;color:#c9d1d9;">{p["text"][:280]}'
+                f'{"…" if len(p["text"]) > 280 else ""}<br>'
+                + (f'<a href="{p["link"]}" target="_blank" style="font-size:11px;color:#58a6ff;'
+                   f'text-decoration:none;">🔗 Open post</a>' if p.get("link") else "")
+                + '</div>'
+                for p in feed["posts"]
+            )
+        else:
+            body_html = ('<div style="margin-top:6px;font-size:13px;color:#8b949e;font-style:italic;">'
+                          'No public preview available right now — open the source directly.</div>')
+        st.markdown(f"""
+<div class="nc-card">
+  <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+    <div style="font-weight:600;color:#d2a8ff;font-size:14px;">{feed.get('icon','📡')} {feed.get('source','Unknown')}</div>
+    {status_html}
+  </div>
+  {body_html}
+  <div style="margin-top:8px;"><a href="{feed.get('link','')}" target="_blank"
+       style="font-size:11px;color:#58a6ff;text-decoration:none;">🔗 View source</a></div>
+</div>""", unsafe_allow_html=True)
+
+    col_tg, col_tw = st.columns(2)
+    with col_tg:
+        st.markdown("**📢 Telegram — Trading**")
+        for feed in st.session_state.trading_tg_result:
+            _render_trading_feed_card(feed)
+    with col_tw:
+        st.markdown("**🐦 X / Twitter — Trading**")
+        for feed in st.session_state.trading_tw_result:
+            _render_trading_feed_card(feed)
+
 
 # ════════════════════════════════════════════════════════════════════════════════
 # TAB 3 — TIKTOK STUDIO (paste-a-link tools)
 # ════════════════════════════════════════════════════════════════════════════════
 with tab_tiktok:
-    import tiktok_studio_helper
+    from helpers import tiktok_studio_helper
 
     col_ttl, col_badge = st.columns([5, 2])
     with col_ttl:

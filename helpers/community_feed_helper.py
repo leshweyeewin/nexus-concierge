@@ -12,6 +12,7 @@ DevRelopsAgent sees in chat, without spinning up the MCP subprocess.
 import os
 import re
 import json
+import html
 import urllib.request
 
 _HEADERS = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
@@ -48,32 +49,69 @@ _BASE_FEEDS = {
 }
 
 
-def _fetch_telegram(feed_info: dict) -> dict:
-    url = "https://t.me/s/googledevspacesg"
+def _fetch_telegram_channel(channel: str, feed_info: dict, num_posts: int = 2) -> dict:
+    """Scrape a public Telegram channel's web preview (t.me/s/<channel>). Channels
+    whose owner has disabled the web preview return a page with no post markup —
+    that's a legitimate channel setting, not an error, so we mark it 'offline' and
+    link straight to the channel rather than show nothing."""
+    url = f"https://t.me/s/{channel}"
     try:
         req = urllib.request.Request(url, headers=_HEADERS)
         with urllib.request.urlopen(req, timeout=8) as response:
-            html = response.read().decode("utf-8")
+            page_html = response.read().decode("utf-8")
         posts_with_ids = re.findall(
             r'<div class="tgme_widget_message[^"]*"\s+data-post="([^"]+)"[^>]*>.*?'
             r'<div class="tgme_widget_message_text[^"]*"[^>]*>(.*?)</div>',
-            html, re.DOTALL,
+            page_html, re.DOTALL,
         )
         if posts_with_ids:
             clean_posts = []
-            for post_id, p in posts_with_ids[-2:]:
-                p_clean = re.sub(r"<[^>]+>", "", p)
-                p_clean = (p_clean.replace("&amp;", "&").replace("&#33;", "!")
-                           .replace("&lt;", "<").replace("&gt;", ">").replace("&quot;", '"').strip())
+            for post_id, p in posts_with_ids[-num_posts:]:
+                p_clean = html.unescape(re.sub(r"<[^>]+>", "", p)).strip()
                 clean_posts.append({"text": p_clean, "link": f"https://t.me/{post_id}"})
             feed_info["posts"] = clean_posts
             feed_info["live_status"] = "live"
         else:
             feed_info["live_status"] = "offline"
+            feed_info["error"] = "Channel has no public web preview (owner disabled it, or no posts)."
     except Exception as e:
         feed_info["live_status"] = "offline"
         feed_info["error"] = str(e)
     return feed_info
+
+
+def _fetch_telegram(feed_info: dict) -> dict:
+    return _fetch_telegram_channel("googledevspacesg", feed_info)
+
+
+TRADING_TELEGRAM_CHANNELS = {
+    "tigerbrokersoptions": {"source": "Tiger Brokers Options", "channel": "TigerBrokersOptions"},
+    "thesafeinvestor2": {"source": "The Safe Investor", "channel": "thesafeinvestor2"},
+    "stocktradingandanalysis": {"source": "Stock Trading & Analysis", "channel": "stocktradingandanalysis"},
+    "poemsta": {"source": "POEMS TA", "channel": "POEMSTA"},
+    "tigeroptionscamp": {"source": "Tiger Options Camp", "channel": "TigerOptionsCamp"},
+    "tbcashboost": {"source": "TB CashBoost", "channel": "TBCashBoost"},
+}
+
+
+def fetch_trading_feeds(sources: list | None = None) -> list:
+    """Live-scrape the public trading Telegram channels the user follows. `sources`
+    restricts to a subset of TRADING_TELEGRAM_CHANNELS keys; None fetches all.
+    Each returned dict always has 'live_status' ('live' or 'offline') plus a
+    'link' to the channel so the UI can send users there when preview is disabled."""
+    targets = sources or list(TRADING_TELEGRAM_CHANNELS.keys())
+    results = []
+    for key in targets:
+        cfg = TRADING_TELEGRAM_CHANNELS.get(key)
+        if not cfg:
+            continue
+        feed_info = {
+            "source": cfg["source"],
+            "icon": "\U0001F4C8",
+            "link": f"https://t.me/{cfg['channel']}",
+        }
+        results.append(_fetch_telegram_channel(cfg["channel"], feed_info))
+    return results
 
 
 def _fetch_headings(feed_info: dict, url: str, tags: str) -> dict:

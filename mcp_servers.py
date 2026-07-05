@@ -5,6 +5,7 @@ import argparse
 import urllib.request
 import re
 import yfinance as yf
+from datetime import datetime, timezone
 from mcp.server.fastmcp import FastMCP
 
 # Parse arguments
@@ -414,6 +415,27 @@ elif args.server == "tiktok":
         return json.dumps(feeds)
 
 elif args.server == "market":
+    # Last-known-good cache: when a live fetch fails, we serve the last real value we
+    # fetched (clearly marked stale, with the timestamp it was fetched at) instead of a
+    # hardcoded placeholder that silently pretends to be current data.
+    _last_known_good = {}
+
+    def _fresh_or_stale(cache_key: str, data, error: str | None = None) -> str:
+        if data is not None:
+            _last_known_good[cache_key] = {"data": data, "fetched_at": datetime.now(timezone.utc).isoformat()}
+            return json.dumps(data)
+        cached = _last_known_good.get(cache_key)
+        if cached:
+            if isinstance(cached["data"], list):
+                stale_data = {"items": cached["data"], "stale": True, "as_of": cached["fetched_at"], "error": error}
+            else:
+                stale_data = dict(cached["data"])
+                stale_data["stale"] = True
+                stale_data["as_of"] = cached["fetched_at"]
+                stale_data["error"] = error
+            return json.dumps(stale_data)
+        return json.dumps({"error": error or "Live data unavailable and no prior cached value exists."})
+
     @mcp.tool(name="get_live_price", description="Fetch live price feeds and technical indicators for active US stock tickers.")
     def get_live_price(ticker: str) -> str:
         ticker = ticker.upper()
@@ -421,14 +443,14 @@ elif args.server == "market":
             t = yf.Ticker(ticker)
             info = t.fast_info
             hist = t.history(period="5d")
-            
+
             if hist.empty:
                 return json.dumps({"error": f"No historical pricing data found for ticker '{ticker}'"})
-                
+
             current_price = info.last_price if hasattr(info, 'last_price') and info.last_price else hist['Close'].iloc[-1]
             prev_close = hist['Close'].iloc[-2] if len(hist) > 1 else current_price
             change_pct = ((current_price / prev_close) - 1) * 100 if prev_close else 0.0
-            
+
             # Simple RSI calculation based on 30 days history
             hist_30 = t.history(period="30d")
             rsi_val = 50.0
@@ -439,25 +461,18 @@ elif args.server == "market":
                 rs = gain / loss
                 rsi = 100 - (100 / (1 + rs))
                 rsi_val = rsi.dropna().iloc[-1] if not rsi.dropna().empty else 50.0
-                
-            return json.dumps({
+
+            data = {
                 "ticker": ticker,
                 "price": round(current_price, 2),
                 "change_24h": f"{change_pct:+.2f}%",
                 "volume": int(info.last_volume) if hasattr(info, 'last_volume') and info.last_volume else None,
                 "rsi_14": round(float(rsi_val), 1),
                 "macd": "Bullish crossovers" if change_pct > 0 else "Neutral consolidation"
-            })
-        except Exception as e:
-            # Fallback to simulated database if yfinance is offline or ticker isn't in yfinance
-            prices = {
-                "TSLA": {"price": 185.20, "change_24h": "+1.8%", "rsi_14": 58.4, "macd": "Neutral-bullish"},
-                "NVDA": {"price": 125.40, "change_24h": "+4.2%", "rsi_14": 67.8, "macd": "Strong bullish crossovers"},
-                "AAPL": {"price": 215.10, "change_24h": "-0.3%", "rsi_14": 46.5, "macd": "Neutral consolidation"}
             }
-            data = prices.get(ticker, {"price": 150.0, "change_24h": "0.0%", "rsi_14": 50.0, "macd": "Unknown"})
-            data["info"] = f"Simulated data (yfinance offline/error: {str(e)})"
-            return json.dumps(data)
+            return _fresh_or_stale(f"price:{ticker}", data)
+        except Exception as e:
+            return _fresh_or_stale(f"price:{ticker}", None, error=f"yfinance error: {str(e)}")
 
     @mcp.tool(name="get_vector_trade_logs", description="Retrieve historical setup outcomes from US Stocks Options vector database logs.")
     def get_vector_trade_logs() -> str:
@@ -494,26 +509,15 @@ elif args.server == "market":
                     elif k == "impliedVolatility" and isinstance(v, float):
                         c[k] = f"{v * 100:.1f}%"
                         
-            return json.dumps({
+            data = {
                 "ticker": ticker,
                 "expiry": exp,
                 "calls": calls_list,
                 "puts": puts_list
-            })
-        except Exception as e:
-            # Fallback to simulated options chain
-            chain = {
-                "TSLA": [
-                    {"contract": "TSLA-20260710-185-C", "type": "Call", "strike": 185, "expiry": "2026-07-10", "premium": 4.50, "iv": "42.5%", "bid": 4.40, "ask": 4.60},
-                    {"contract": "TSLA-20260710-180-P", "type": "Put", "strike": 180, "expiry": "2026-07-10", "premium": 3.10, "iv": "45.2%", "bid": 3.00, "ask": 3.20}
-                ],
-                "NVDA": [
-                    {"contract": "NVDA-20260710-130-C", "type": "Call", "strike": 130, "expiry": "2026-07-10", "premium": 3.20, "iv": "52.4%", "bid": 3.10, "ask": 3.30},
-                    {"contract": "NVDA-20260710-120-P", "type": "Put", "strike": 120, "expiry": "2026-07-10", "premium": 2.80, "iv": "55.8%", "bid": 2.70, "ask": 2.90}
-                ]
             }
-            data = chain.get(ticker, [{"contract": f"{ticker}-NOMINAL-C", "type": "Call", "strike": 100, "expiry": "2026-07-10", "premium": 1.50, "iv": "30.0%", "bid": 1.40, "ask": 1.60}])
-            return json.dumps({"ticker": ticker, "expiry": "2026-07-10", "contracts": data, "note": f"Simulated data (yfinance offline/error: {str(e)})"})
+            return _fresh_or_stale(f"options:{ticker}", data)
+        except Exception as e:
+            return _fresh_or_stale(f"options:{ticker}", None, error=f"yfinance error: {str(e)}")
 
     @mcp.tool(name="get_moomoo_tiger_indicators", description="Pulls live technical indicators, options volume analysis, and broker AI sentiment indices for active tickers across Tiger Brokers and MooMoo platforms. Note: Uses a live yfinance options put/call volume ratio proxy.")
     def get_moomoo_tiger_indicators(ticker: str) -> str:
@@ -544,17 +548,9 @@ elif args.server == "market":
                 "put_call_volume_ratio": put_call_ratio,
                 "institutional_options_flow_24h": "+$15M net call purchasing" if put_call_ratio < 0.9 else "-$2M net call purchasing"
             }
-            return json.dumps(indicators)
+            return _fresh_or_stale(f"moomoo:{ticker}", indicators)
         except Exception as e:
-            # Fallback
-            indicators = {
-                "moomoo_options_sentiment": "Bullish call-to-put ratio (1.85) [SIMULATED]",
-                "tiger_brokers_ai_signal": "Strong Buy - Options Implied Move: +/- 4.2% [SIMULATED]",
-                "implied_volatility_percentile": "68% [SIMULATED]",
-                "put_call_volume_ratio": 0.54,
-                "institutional_options_flow_24h": "+$22M net call purchasing [SIMULATED]"
-            }
-            return json.dumps(indicators)
+            return _fresh_or_stale(f"moomoo:{ticker}", None, error=f"yfinance error: {str(e)}")
 
     @mcp.tool(name="get_tradingview_technical_rating", description="Retrieves live technical analysis recommendations and oscillators indicators from TradingView's scanner API.")
     def get_tradingview_technical_rating(ticker: str) -> str:
@@ -644,23 +640,17 @@ elif args.server == "market":
             if not vix_hist.empty:
                 vix_price = round(float(vix_hist["Close"].iloc[-1]), 2)
             vix_sentiment = "Greed (Low Volatility)" if vix_price < 15 else ("Normal" if vix_price < 20 else "Fear (High Volatility)")
-            return json.dumps({
+            data = {
                 "ticker": ticker,
                 "recent_headlines": headlines[:3],
                 "estimated_news_sentiment": overall_news,
                 "financial_sentiment_score": sentiment_score,
                 "cboe_vix_index": vix_price,
                 "vix_market_state": vix_sentiment
-            })
+            }
+            return _fresh_or_stale(f"news:{ticker}", data)
         except Exception as e:
-            return json.dumps({
-                "ticker": ticker,
-                "estimated_news_sentiment": "Neutral (Simulation)",
-                "financial_sentiment_score": 0.0,
-                "cboe_vix_index": 14.85,
-                "vix_market_state": "Greed (Low Volatility)",
-                "error": str(e)
-            })
+            return _fresh_or_stale(f"news:{ticker}", None, error=f"yfinance error: {str(e)}")
 
     @mcp.tool(name="get_market_movers", description="Fetches daily percentage changes for active market leaders to identify top market movers.")
     def get_market_movers() -> str:
@@ -679,12 +669,8 @@ elif args.server == "market":
                 pass
         if movers:
             movers_sorted = sorted(movers, key=lambda x: abs(x["change"]), reverse=True)
-            return json.dumps(movers_sorted)
-        return json.dumps([
-            {"ticker": "NVDA", "price": 125.40, "change": 4.2},
-            {"ticker": "TSLA", "price": 185.20, "change": 1.8},
-            {"ticker": "AAPL", "price": 215.10, "change": -0.3}
-        ])
+            return _fresh_or_stale("market_movers", movers_sorted)
+        return _fresh_or_stale("market_movers", None, error="yfinance returned no data for any tracked ticker.")
 
     @mcp.tool(name="get_earnings_calendar", description="Fetches upcoming earnings dates and estimated EPS for a given US stock ticker.")
     def get_earnings_calendar(ticker: str) -> str:
@@ -725,10 +711,11 @@ elif args.server == "market":
             if info:
                 rec = info.get("recommendationKey", "N/A")
                 mean_target = info.get("targetMeanPrice", "N/A")
-                return json.dumps({"ticker": ticker, "overall_consensus": rec, "target_price_mean": mean_target})
+                data = {"ticker": ticker, "overall_consensus": rec, "target_price_mean": mean_target}
+                return _fresh_or_stale(f"analyst:{ticker}", data)
             return json.dumps({"ticker": ticker, "message": "No rating changes found."})
         except Exception as e:
-            return json.dumps({"ticker": ticker, "overall_consensus": "Buy (Fallback)", "target_price_mean": 210.0, "error": str(e)})
+            return _fresh_or_stale(f"analyst:{ticker}", None, error=f"yfinance error: {str(e)}")
 
     @mcp.tool(name="get_institutional_flow", description="Pulls institutional ownership stats and major holder percentages for a US stock ticker.")
     def get_institutional_flow(ticker: str) -> str:
@@ -742,10 +729,10 @@ elif args.server == "market":
                     for k, v in r.items():
                         if isinstance(v, float) and (v != v or v == float('inf') or v == float('-inf')):
                             r[k] = None
-                return json.dumps(records)
+                return _fresh_or_stale(f"institutional:{ticker}", records)
             return json.dumps({"ticker": ticker, "message": "No institutional holder details available."})
         except Exception as e:
-            return json.dumps({"ticker": ticker, "institutional_ownership": "62.4% (Fallback)", "top_institutions": ["Vanguard Group", "Blackrock Inc", "State Street Corp"], "error": str(e)})
+            return _fresh_or_stale(f"institutional:{ticker}", None, error=f"yfinance error: {str(e)}")
 
     @mcp.tool(name="get_unusual_options_activity", description="Scans the nearest expiry options chain for unusual options volume (volume > 1.5x open interest).")
     def get_unusual_options_activity(ticker: str) -> str:
@@ -788,7 +775,7 @@ elif args.server == "market":
                 return json.dumps(unusual_sorted)
             return json.dumps({"message": "No unusual option volume activities detected (volume > 1.5x open interest) on nearest expiry."})
         except Exception as e:
-            return json.dumps({"ticker": ticker, "message": "Standard option activity. Simulation detects block sweep calls at $195 strike.", "error": str(e)})
+            return json.dumps({"ticker": ticker, "error": f"yfinance error: {str(e)}"})
 
     @mcp.tool(name="get_seller_dashboard", description="Calculates writer statistics (break-evens, capital required, yield and annualized return) for Cash Secured Puts (CSP) and Covered Calls (CC).")
     def get_seller_dashboard(ticker: str, strike: float, premium: float, days_to_expiry: int = 7) -> str:

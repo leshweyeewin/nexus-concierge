@@ -8,7 +8,7 @@ Gmail rather than two separate sign-ins. Never blocks on interactive auth — fa
 back to representative simulated emails if not connected or on any API error.
 """
 
-from google_calendar_helper import _load_silent_credentials  # noqa: F401 (re-exported for app.py)
+from .google_calendar_helper import _load_silent_credentials  # noqa: F401 (re-exported for app.py)
 
 DEFAULT_QUERY = "meetup OR meetup.com OR rsvp OR eventbrite"
 
