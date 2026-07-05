@@ -753,15 +753,10 @@ with tab_events:
                "Both are unofficial, no-login scrapes — if a source blocks us or has its preview "
                "disabled, it's shown as offline with a link straight to the source, never a guessed post.")
 
-    from helpers import twitter_feed_helper
-
     trading_feed_refresh = st.button("🔄 Refresh Trading Feeds", key="trading_feed_refresh")
     if "trading_tg_result" not in st.session_state or trading_feed_refresh:
         with st.spinner("Scraping trading Telegram channels…"):
             st.session_state.trading_tg_result = community_feed_helper.fetch_trading_feeds()
-    if "trading_tw_result" not in st.session_state or trading_feed_refresh:
-        with st.spinner("Scraping followed X/Twitter accounts…"):
-            st.session_state.trading_tw_result = twitter_feed_helper.fetch_twitter_feeds()
 
     def _render_trading_feed_card(feed: dict) -> None:
         is_live = feed.get("live_status") == "live"
@@ -793,15 +788,14 @@ with tab_events:
        style="font-size:11px;color:#58a6ff;text-decoration:none;">🔗 View source</a></div>
 </div>""", unsafe_allow_html=True)
 
-    col_tg, col_tw = st.columns(2)
-    with col_tg:
-        st.markdown("**📢 Telegram — Trading**")
-        for feed in st.session_state.trading_tg_result:
-            _render_trading_feed_card(feed)
-    with col_tw:
-        st.markdown("**🐦 X / Twitter — Trading**")
-        for feed in st.session_state.trading_tw_result:
-            _render_trading_feed_card(feed)
+    st.markdown("**📢 Telegram — Trading Channels**")
+    for feed in st.session_state.trading_tg_result:
+        _render_trading_feed_card(feed)
+    st.markdown("""
+<div class="nc-card" style="border-color:#2b3340;">
+  <span class="badge" style="background:#30363d;color:#8b949e;border-color:#434c56;">🐦 X / Twitter</span>
+  <span style="color:#8b949e;font-size:13px;">X/Twitter scraping is not available — direct web scraping of X requires authentication. Follow trading accounts directly at x.com.</span>
+</div>""", unsafe_allow_html=True)
 
 
 # ════════════════════════════════════════════════════════════════════════════════
@@ -916,10 +910,10 @@ with tab_dag:
         edge [fontname="Inter, sans-serif", fontsize=9, color="#4A5568", fontcolor="#8b949e"];
 
         START   [label="▶  Start Node",                              fillcolor="#0d1117", fontcolor="#58a6ff",  color="#1f6feb"];
-        orch    [label="NexusOrchestrator\n(gemini-2.5-flash-lite)", fillcolor="#0d1b2a", fontcolor="#90CDF4",  color="#1A365D"];
-        dev     [label="DevRelopsAgent\n(gemini-2.5-flash-lite)",    fillcolor="#0a2318", fontcolor="#68D391",  color="#22543D"];
-        trading [label="QuantitativeRiskAgent\n(gemini-2.5-flash-lite)", fillcolor="#1f1600", fontcolor="#FBD38D", color="#744210"];
-        tiktok  [label="CreativeAffiliateAgent\n(gemini-2.5-flash-lite)", fillcolor="#1a0f30", fontcolor="#D6BCFA", color="#5C3C92"];
+        orch    [label="NexusOrchestrator\n(gemini-2.5-flash)", fillcolor="#0d1b2a", fontcolor="#90CDF4",  color="#1A365D"];
+        dev     [label="DevRelopsAgent\n(gemini-2.5-flash)",    fillcolor="#0a2318", fontcolor="#68D391",  color="#22543D"];
+        trading [label="QuantitativeRiskAgent\n(gemini-2.5-flash)", fillcolor="#1f1600", fontcolor="#FBD38D", color="#744210"];
+        tiktok  [label="CreativeAffiliateAgent\n(gemini-2.5-flash)", fillcolor="#1a0f30", fontcolor="#D6BCFA", color="#5C3C92"];
         final   [label="⏹  Collector\n(Terminal Node)",               fillcolor="#200a0a", fontcolor="#FEB2B2",  color="#742A2A"];
 
         START   -> orch;

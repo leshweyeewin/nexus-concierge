@@ -127,7 +127,7 @@ def route_task(sub_agent: str, tool_context: ToolContext) -> str:
     Pass 'tiktok' for TikTok trend metrics, affiliate products, script hooks.
     """
     tool_context.actions.route = sub_agent
-    tool_context.state["_specialist_pending"] = sub_agent
+    tool_context._route_called = sub_agent
     return f"Orchestrator routing workflow step to: '{sub_agent}'"
 
 def finish_delegation(consolidated_text: str, tool_context: ToolContext) -> str:
@@ -139,9 +139,8 @@ def finish_delegation(consolidated_text: str, tool_context: ToolContext) -> str:
     # and skip the specialist's turn entirely — finalizing on a guessed placeholder
     # instead of real data. If a specialist was just routed to but hasn't actually run
     # yet, force the real handoff instead of finalizing.
-    pending = tool_context.state.get("_specialist_pending")
+    pending = getattr(tool_context, "_route_called", None)
     if pending:
-        tool_context.state["_specialist_pending"] = None
         tool_context.actions.route = pending
         return (f"ERROR: Cannot finish yet — '{pending}' has not actually returned data. "
                 f"Forcing handoff to '{pending}' now. Wait for its real response before calling finish_delegation again.")
@@ -249,7 +248,7 @@ def check_risk_setup(ticker: str, entry_price: float, stop_loss: float, tool_con
 # =====================================================================
 dev_model, dev_instruction = get_agent_config(
     "DevRelopsAgent",
-    "gemini-3.1-flash-lite",
+    "gemini-2.5-flash",
     (
         "You are a master technical networker in Singapore. You scan dev events around town. "
         "You use the fetch_dev_event_feeds tool to pull live agendas from Telegram, Meetup, GeeksHacking, STACK, and Google Developer Space. "
@@ -267,7 +266,7 @@ dev_agent = Agent(
 
 tiktok_model, tiktok_instruction = get_agent_config(
     "CreativeAffiliateAgent",
-    "gemini-3.1-flash-lite",
+    "gemini-2.5-flash",
     (
         "You are the Creative Copywriter Agent. Generate creative hooks and TikTok scripts based on trending "
         "hashtags, keyword performance, and product datasets. Sourced from the TikTok App, Gmail, and the Telegram "
@@ -285,7 +284,7 @@ tiktok_agent = Agent(
 
 trading_model, trading_instruction = get_agent_config(
     "QuantitativeRiskAgent",
-    "gemini-3.1-flash-lite",
+    "gemini-2.5-flash",
     (
         "You are the Quantitative Risk Agent. Monitor financial market indicators, analyze price feeds, and "
         "perform risk calculations checking setup limits on MooMoo API, publicly available APIs, Tiger Brokers, "
@@ -301,7 +300,7 @@ trading_agent = Agent(
     tools=[market_toolset, get_trading_rules, check_risk_setup]
 )
 
-orch_model = "gemini-3.1-flash-lite"
+orch_model = "gemini-2.5-flash"
 orch_instruction = (
     "You are the central engine of NexusConcierge. Parse the core message details.\n"
     "Process:\n"
@@ -464,7 +463,7 @@ async def main_async(user_payload, db_session_service, session_id="local_dev_tes
                 if hasattr(chunk, "output") and chunk.output is not None:
                     text = str(chunk.output)
                     is_final = True  # the collector node's output is always the terminal answer
-                elif hasattr(chunk, "content") and chunk.content and hasattr(chunk.content, "parts"):
+                elif hasattr(chunk, "content") and chunk.content and getattr(chunk.content, "parts", None) is not None:
                     for part in chunk.content.parts:
                         if hasattr(part, "text") and part.text:
                             text += part.text

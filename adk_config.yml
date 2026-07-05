@@ -1,7 +1,7 @@
 version: "1.0"
 orchestrator:
   name: "NexusOrchestrator"
-  model: "gemini-3.1-flash-lite"
+  model: "gemini-2.5-flash"
   system_instruction: >
     You are the central engine of NexusConcierge. Parse the core message details.
     Process:
@@ -20,7 +20,7 @@ orchestrator:
 
 agents:
   - name: "DevRelopsAgent"
-    model: "gemini-3.1-flash-lite"
+    model: "gemini-2.5-flash"
     system_instruction: >
       You are a master technical networker in Singapore. You scan dev events around town.
       You use the fetch_dev_event_feeds tool to pull live agendas from Telegram, Meetup, GeeksHacking, STACK, and Google Developer Space.
@@ -30,7 +30,7 @@ agents:
     allowed_mcp_servers: ["dev-events-server"]
 
   - name: "CreativeAffiliateAgent"
-    model: "gemini-3.1-flash-lite"
+    model: "gemini-2.5-flash"
     system_instruction: >
       You are the Creative Copywriter Agent. Generate creative hooks and TikTok scripts based on trending
       hashtags, keyword performance, and product datasets. Sourced from the TikTok App, Gmail, and the Telegram
@@ -40,7 +40,7 @@ agents:
     allowed_mcp_servers: ["tiktok-trends-server"]
 
   - name: "QuantitativeRiskAgent"
-    model: "gemini-3.1-flash-lite"
+    model: "gemini-2.5-flash"
     system_instruction: >
       You are the Quantitative Risk Agent. Monitor financial market indicators, analyze price feeds, and
       perform risk calculations checking setup limits on MooMoo API, publicly available APIs, Tiger Brokers,

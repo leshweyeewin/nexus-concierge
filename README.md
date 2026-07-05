@@ -15,7 +15,7 @@ Rather than a single monolithic agent with too many tool options, NexusConcierge
        User Request / Streamlit Input
                      │
                      ▼
-             NexusOrchestrator (gemini-3.1-flash-lite)
+             NexusOrchestrator (gemini-2.5-flash)
               ▲      ▲      ▲
               │      │      │
       ┌───────┴┐     │     ┌┴───────┐
@@ -66,7 +66,7 @@ Initialize your virtual environment and install the required modules:
 ```powershell
 python -m venv venv
 .\venv\Scripts\activate
-pip install google-genai google-adk yfinance streamlit mcp fastmcp aiosqlite graphviz
+pip install -r requirements.txt
 ```
 
 ### 3. Run the CLI Pipeline

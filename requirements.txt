@@ -1,0 +1,9 @@
+google-genai
+google-adk
+mcp[cli]
+streamlit
+yfinance
+PyYAML
+google-auth-oauthlib
+google-api-python-client
+aiosqlite
