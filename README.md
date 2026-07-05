@@ -70,10 +70,17 @@ pip install -r requirements.txt
 ```
 
 ### 3. Run the CLI Pipeline
-Verify the E2E multi-agent engine:
-```powershell
-python main.py
-```
+Verify the E2E multi-agent engine by running the CLI pipeline. 
+
+- To enter **Interactive Console Mode** (ask custom questions sequentially):
+  ```powershell
+  python main.py
+  ```
+- To execute a **Single Compound Query** directly:
+  ```powershell
+  python main.py "check dev events, check MU latest price, and make a TikTok hook"
+  ```
+
 
 ### 4. Run the Streamlit Dashboard
 Launch the observability portal in your browser:

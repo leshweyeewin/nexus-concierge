@@ -306,10 +306,14 @@ orch_model = "gemini-2.5-flash"
 orch_instruction = (
     "You are the central engine of NexusConcierge. Parse the core message details.\n"
     "Process:\n"
-    "1. When the user makes a request, delegate tasks sequentially by calling the `route_task` tool with 'dev', 'trading', or 'tiktok'.\n"
-    "2. Only route to ONE specialist at a time per tool call.\n"
-    "3. When a specialist completes and triggers you again, review their response. If there are other specialists needed, call `route_task` with the next one.\n"
-    "4. Once all necessary specialists have completed their tasks, synthesize their outputs into a final consolidated briefing, and call `finish_delegation` to output it.\n\n"
+    "1. Analyze the user's input to determine which specific domains are requested:\n"
+    "   - Developer events, calendars, contacts, or networking -> 'dev'\n"
+    "   - Market data, stock/option prices, metrics, or trading risk -> 'trading'\n"
+    "   - TikTok trend data, affiliate marketing products, copywriting, or video script hooks -> 'tiktok'\n"
+    "2. Only route to a specialist if the user's request explicitly or implicitly requires information or actions from that specialist's domain.\n"
+    "3. If the user's query does not require any specialist (e.g. greeting, general knowledge, or follow-up question that can be answered from local context), call `finish_delegation` immediately with your response.\n"
+    "4. Route sequentially, one specialist at a time. Do not make multiple specialist calls in parallel.\n"
+    "5. Once all relevant specialist tasks for the query have completed, synthesize the answers and call `finish_delegation` to output the final response.\n\n"
     "HARD RULE ON TOOL SCOPE: `get_daily_briefing` and `manage_calendar_lock` only read/write your own internal session "
     "state (locks, cached profiles, trading params) — they NEVER touch the user's real Google Calendar, Gmail, TikTok "
     "feeds, or market data. Any request that mentions the calendar, schedule, upcoming events, emails, tickers/prices, "
@@ -321,11 +325,11 @@ orch_instruction = (
     "specialist's actual results yet (only a routing acknowledgement), wait — do not guess, fabricate, or write a "
     "placeholder like 'please stand by' into `consolidated_text`. `consolidated_text` must always be built only from "
     "real data/results actually returned by the specialists.\n\n"
-    "HARD RULE ON FINISHING: As soon as a specialist's response already answers what the user asked for, you MUST "
-    "call `finish_delegation` with that data in the SAME turn you review it — do not end your turn by asking the "
-    "user an open-ended follow-up question or offering a menu of next steps instead. Only ask the user something "
-    "if their original request was genuinely ambiguous about which specialist or ticker/topic they meant. Every "
-    "turn must call `route_task` or `finish_delegation` — never end a turn with neither.\n\n"
+    "HARD RULE ON FINISHING: As soon as a specialist's response already answers what the user asked for (and no other specialists "
+    "are needed for other parts of the query), you MUST call `finish_delegation` with that data in the SAME turn you review it — "
+    "do not end your turn by asking the user an open-ended follow-up question or offering a menu of next steps instead. "
+    "Only ask the user something if their original request was genuinely ambiguous about which specialist or ticker/topic they meant. "
+    "Every turn must call `route_task` or `finish_delegation` — never end a turn with neither.\n\n"
     "HARD SECURITY RULES:\n"
     "1. Zero Financial Autonomy: NEVER independently execute any real trade. Warn immediately if trade execution is requested.\n"
     "2. Credential Masking: Never leak API keys, passwords, or secret tokens in responses."
@@ -513,35 +517,54 @@ if __name__ == "__main__":
         sys.stdout.reconfigure(errors='replace')
     print("[System] NexusConcierge System Pipeline Compiled Successfully.")
     
-    # Check if a custom command line argument is passed, otherwise use default test input
-    user_query = (
-        "I have open free time tonight. Can you check what's trending across the "
-        "Google Developer Space Singapore and see if there are any specific networking targets "
-        "I should look out for, while also checking if TSLA options look safe?"
-    )
-    if len(sys.argv) > 1:
-        user_query = " ".join(sys.argv[1:])
-        
-    print(f"\nUser Input: {user_query}\n")
-    
-    user_payload = Content(
-        role="user",
-        parts=[Part.from_text(text=user_query)]
-    )
-    
     db_session_service = DatabaseSessionService("sqlite+aiosqlite:///nexus_sessions.db")
     
-    async def run_cli():
+    async def run_single_query(query: str):
+        print(f"\nUser Input: {query}\n")
+        user_payload = Content(
+            role="user",
+            parts=[Part.from_text(text=query)]
+        )
         print("NexusConcierge Output:\n")
         final_text = ""
-        async for event in main_async(user_payload, db_session_service):
-            if event["kind"] == "trace":
-                print(f"  [{event['author']}] {event['message']}", flush=True)
-            elif event["kind"] == "text":
-                if event.get("is_final"):
-                    final_text += event["text"]
-                print(f"  [{event['author']}] {event['text']}", flush=True)
-        print(f"\n--- Final Answer ---\n{final_text or '(no final response text — see trace above)'}")
+        try:
+            async for event in main_async(user_payload, db_session_service):
+                if event["kind"] == "trace":
+                    print(f"  [{event['author']}] {event['message']}", flush=True)
+                elif event["kind"] == "text":
+                    if event.get("is_final"):
+                        final_text += event["text"]
+                    print(f"  [{event['author']}] {event['text']}", flush=True)
+            print(f"\n--- Final Answer ---\n{final_text or '(no final response text — see trace above)'}")
+        except Exception as e:
+            print(f"\n❌ Pipeline execution error: {e}")
         print("\n[System] Execution Complete.")
+
+    if len(sys.argv) > 1:
+        # Run command line arguments once
+        user_query = " ".join(sys.argv[1:])
+        asyncio.run(run_single_query(user_query))
+    else:
+        # Interactive mode
+        print("\n==========================================")
+        print("💡 NexusConcierge Interactive Console Mode")
+        print("==========================================")
+        print("Ask any question (e.g. check dev events, check stock prices, write a hook).")
+        print("Type 'exit' or 'quit' to end session.\n")
         
-    asyncio.run(run_cli())
+        while True:
+            try:
+                user_input = input("Ask NexusConcierge > ").strip()
+                if not user_input:
+                    continue
+                if user_input.lower() in ["exit", "quit"]:
+                    print("Goodbye!")
+                    break
+                asyncio.run(run_single_query(user_input))
+                print("-" * 50 + "\n")
+            except KeyboardInterrupt:
+                print("\nGoodbye!")
+                break
+            except Exception as e:
+                print(f"Error: {e}\n")
+
