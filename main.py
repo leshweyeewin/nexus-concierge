@@ -126,7 +126,14 @@ def route_task(sub_agent: str, tool_context: ToolContext) -> str:
     Pass 'tiktok' for TikTok trend metrics, affiliate products, script hooks.
     """
     tool_context.actions.route = sub_agent
-    tool_context._route_called = sub_agent
+    # NOTE: route_task and finish_delegation can run as sibling parallel function
+    # calls within the SAME model turn (ADK executes them as concurrent asyncio
+    # tasks, each with its OWN ToolContext instance) — a plain attribute set here
+    # (e.g. `tool_context._route_called = ...`) lives only on THIS call's Context
+    # object and is invisible to finish_delegation's separate Context. `state` is
+    # the one thing actually shared/persisted across sibling calls in the same
+    # turn, so the pending-route flag must live there instead.
+    tool_context.state["_pending_route"] = sub_agent
     return f"Orchestrator routing workflow step to: '{sub_agent}'"
 
 def finish_delegation(consolidated_text: str, tool_context: ToolContext) -> str:
@@ -138,7 +145,7 @@ def finish_delegation(consolidated_text: str, tool_context: ToolContext) -> str:
     # and skip the specialist's turn entirely — finalizing on a guessed placeholder
     # instead of real data. If a specialist was just routed to but hasn't actually run
     # yet, force the real handoff instead of finalizing.
-    pending = getattr(tool_context, "_route_called", None)
+    pending = tool_context.state.get("_pending_route")
     if pending:
         tool_context.actions.route = pending
         return (f"ERROR: Cannot finish yet — '{pending}' has not actually returned data. "
@@ -146,6 +153,14 @@ def finish_delegation(consolidated_text: str, tool_context: ToolContext) -> str:
     tool_context.state["final_response"] = consolidated_text
     tool_context.actions.route = "final"
     return "Finalizing delegation and compiling response."
+
+def _clear_pending_route(callback_context):
+    """Runs after a specialist agent's node genuinely finishes its turn.
+    Clears the '_pending_route' flag set by route_task so a later, legitimate
+    finish_delegation call (after this specialist has actually returned data)
+    isn't mistaken for the same race it was guarding against.
+    """
+    callback_context.state["_pending_route"] = None
 
 # --- Orchestrator Tools ---
 def manage_calendar_lock(action: str, event_name: str, tool_context: ToolContext) -> str:
@@ -263,7 +278,8 @@ dev_agent = Agent(
     name="DevRelopsAgent",
     model=dev_model,
     instruction=dev_instruction,
-    tools=[events_toolset, manage_event_profiles, match_speaker_to_interests]
+    tools=[events_toolset, manage_event_profiles, match_speaker_to_interests],
+    after_agent_callback=_clear_pending_route
 )
 
 tiktok_model, tiktok_instruction = get_agent_config(
@@ -281,16 +297,24 @@ tiktok_agent = Agent(
     name="CreativeAffiliateAgent",
     model=tiktok_model,
     instruction=tiktok_instruction,
-    tools=[tiktok_toolset, manage_style_memory]
+    tools=[tiktok_toolset, manage_style_memory],
+    after_agent_callback=_clear_pending_route
 )
 
 trading_model, trading_instruction = get_agent_config(
     "QuantitativeRiskAgent",
     "gemini-3.1-flash-lite",
     (
-        "You are the Quantitative Risk Agent. Monitor financial market indicators, analyze price feeds, and "
-        "perform risk calculations checking setup limits on MooMoo API, publicly available APIs, Tiger Brokers, "
-        "and MooMoo platforms. You analyze Options chains (via get_options_chain) and MooMoo/Tiger sentiment indicators (via get_moomoo_tiger_indicators).\n"
+        "You are the Quantitative Risk Agent. You use the get_live_price tool to fetch price feeds, "
+        "get_options_chain to analyze Options chains, and get_moomoo_tiger_indicators for MooMoo/Tiger sentiment indicators.\n"
+        "HARD RULE ON PRICE FRESHNESS: get_live_price may return a JSON payload with \"stale\": true when the live feed "
+        "is unavailable and a cached value is being served instead. Never present a stale price as current — always check "
+        "for the \"stale\" field and, if present, explicitly tell the user the price is stale and quote the \"as_of\" timestamp.\n"
+        "HARD RULE ON RISK CHECKS: Whenever the user proposes or asks about a trade setup with an entry price and stop-loss "
+        "(or you have both values), you MUST call the check_risk_setup tool to validate it against the immutable risk "
+        "thresholds — never estimate or eyeball the percentage-loss/threshold comparison yourself. Relay the tool's verdict "
+        "verbatim, including the word 'rejected' or 'approved' exactly as returned, rather than paraphrasing it into a "
+        "generic warning.\n"
         "HARD RULE: You have ZERO financial autonomy and cannot place real trades. Warn the user if a setup violates rules. "
         "Execution remains strictly locked behind Human-in-the-Loop validation."
     )
@@ -299,7 +323,8 @@ trading_agent = Agent(
     name="QuantitativeRiskAgent",
     model=trading_model,
     instruction=trading_instruction,
-    tools=[market_toolset, get_trading_rules, check_risk_setup]
+    tools=[market_toolset, get_trading_rules, check_risk_setup],
+    after_agent_callback=_clear_pending_route
 )
 
 orch_model = "gemini-3.1-flash-lite"
