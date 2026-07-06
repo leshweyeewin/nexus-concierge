@@ -46,13 +46,15 @@ Rather than a single monolithic agent with too many tool options, NexusConcierge
 ## 🛠️ Features
 
 * **Multi-Agent Orchestration**: Powered by conditional DAG graphs. Each specialist agent is isolated to its own MCP server (FastMCP over stdio).
+* **Deterministic Domain-Routing Backstop**: `finish_delegation` cross-checks the original request's domain keywords against which specialists actually ran this turn and forces a real handoff to any domain mentioned but never visited — so a specialist's off-topic aside can't be mistaken for that domain having been answered. Each specialist is also prompt-scoped to refuse fabricating answers outside its own domain.
 * **Multi-Source Event Scraping**: Scrapes Singapore Developer Space Telegram previews (extracting real message links), Meetup Singapore events, and cascades automatically to check local Gmail emails (`gmail_inbox.json` or simulated dev inbox) if Meetup is offline.
 * **Google Calendar & Gmail API Integration**: Connects to the user's real Google Calendar to list/schedule events and searches Gmail inboxes using Google Client Libraries, with built-in high-fidelity simulation fallbacks if credentials (`credentials.json` or `token.json`) are not present.
 * **Real Stock, Macro & Option Analytics**: Retrieves live stock prices, technical RSI, earnings dates, analyst upgrades, macro calendars, institutional holding percentages, scans option chains for unusual volume spikes (>1.5x open interest), and computes writer calculations (yield, break-even, annualized returns) for Cash Secured Puts (CSP) and Covered Calls (CC). Also connects to TradingView Technical Summary recommendations and CBOE VIX fear index sentiment.
+* **Honest Price Freshness**: Live quotes are pulled from the 1-minute intraday bar rather than a fast-info field that silently reports a stale last-close as if it were live; each quote reports `is_intraday_quote` and `quote_as_of` so the agent always discloses whether a price is a genuine live tick or the last daily close, alongside the existing cached/stale-price flag.
 * **Security & Risk Guardrails**:
   - *Credential Masking*: Automatically strips keys/tokens from tool outputs, replacing them with `[MASKED_CREDENTIAL]`.
   - *Risk Enforcement*: Zero financial autonomy controls; blocks setups exceeding a 2% max-loss threshold.
-* **Streamlit Dashboard**: Dark-themed portal featuring real-time stream rendering, live SQLite State Memory Inspector sidebar, Graphviz routing chart, and MCP status board.
+* **Streamlit Dashboard**: Dark-themed portal featuring real-time stream rendering, live SQLite State Memory Inspector sidebar, Graphviz routing chart, MCP status board, and SGT-formatted "Last synced" timestamps on the Calendar, Gmail, and dev-feed cards.
 
 ---
 
