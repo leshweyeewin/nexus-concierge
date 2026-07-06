@@ -4,7 +4,6 @@ import json
 import argparse
 import urllib.request
 import re
-import yfinance as yf
 from datetime import datetime, timezone
 from mcp.server.fastmcp import FastMCP
 
@@ -425,6 +424,11 @@ elif args.server == "tiktok":
         return json.dumps(feeds)
 
 elif args.server == "market":
+    # Imported here (not at module top) so the events/tiktok subprocesses never pay
+    # yfinance's ~90MB RSS cost (it pulls in pandas/numpy) for a library only this
+    # server actually uses - meaningful on Render's 512MB free-tier instance.
+    import yfinance as yf
+
     # Last-known-good cache: when a live fetch fails, we serve the last real value we
     # fetched (clearly marked stale, with the timestamp it was fetched at) instead of a
     # hardcoded placeholder that silently pretends to be current data.
