@@ -200,6 +200,25 @@ h1, h2, h3 {
 
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
+_SGT = datetime.timezone(datetime.timedelta(hours=8))
+
+
+def _fmt_sync_dt(iso_str):
+    """Format an ISO 8601 timestamp (as scraped/synced) into Singapore local time,
+    e.g. '06 Jul 2026, 09:18 am (SGT)'. Naive timestamps are assumed UTC."""
+    if not iso_str:
+        return None
+    try:
+        dt = datetime.datetime.fromisoformat(iso_str)
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=datetime.timezone.utc)
+        dt_sgt = dt.astimezone(_SGT)
+        stamp = dt_sgt.strftime("%d %b %Y, %I:%M %p").replace("AM", "am").replace("PM", "pm")
+        return f"{stamp} (SGT)"
+    except ValueError:
+        return iso_str
+
+
 def fetch_session_state(user_id, session_id):
     try:
         conn = sqlite3.connect("nexus_sessions.db")
@@ -347,7 +366,7 @@ with st.sidebar:
 <div style="text-align:center;padding:10px 0 16px 0;">
   <div style="font-size:40px;">🌟</div>
   <div style="font-family:'Outfit',sans-serif;font-size:18px;font-weight:700;color:#58a6ff;">NexusConcierge OS</div>
-  <div style="font-size:11px;color:#8b949e;margin-top:4px;">Google ADK · FastMCP · Gemini 2.5</div>
+  <div style="font-size:11px;color:#8b949e;margin-top:4px;">Google ADK · FastMCP · Gemini 3.1</div>
 </div>
 """, unsafe_allow_html=True)
 
@@ -356,7 +375,7 @@ with st.sidebar:
     # ── Agent Status ────────────────────────────────────────────────────────
     st.markdown("### 🤖 Agent Fleet")
     agents = [
-        {"name": "NexusOrchestrator",      "icon": "🧠", "role": "Router · Gemini 2.5",         "color": "#58a6ff"},
+        {"name": "NexusOrchestrator",      "icon": "🧠", "role": "Router · Gemini 3.1",         "color": "#58a6ff"},
         {"name": "DevRelopsAgent",          "icon": "💻", "role": "Events · Calendar · Gmail",    "color": "#3fb950"},
         {"name": "QuantitativeRiskAgent",   "icon": "📈", "role": "Market · Options · RSI/MACD",  "color": "#f0883e"},
         {"name": "CreativeAffiliateAgent",  "icon": "🎵", "role": "TikTok · Hooks · Trends",      "color": "#d2a8ff"},
@@ -426,7 +445,7 @@ with st.sidebar:
   <span style="background:#1f6feb22;color:#58a6ff;border:1px solid #1f6feb55;
                border-radius:20px;padding:3px 10px;font-size:10px;margin:2px;display:inline-block;">FastMCP</span>
   <span style="background:#1f6feb22;color:#58a6ff;border:1px solid #1f6feb55;
-               border-radius:20px;padding:3px 10px;font-size:10px;margin:2px;display:inline-block;">Gemini 2.5</span>
+               border-radius:20px;padding:3px 10px;font-size:10px;margin:2px;display:inline-block;">Gemini 3.1</span>
   <span style="background:#1f6feb22;color:#58a6ff;border:1px solid #1f6feb55;
                border-radius:20px;padding:3px 10px;font-size:10px;margin:2px;display:inline-block;">Streamlit</span>
 </div>
@@ -623,12 +642,17 @@ with tab_events:
     # Re-fetch whenever Refresh is clicked or either toggle changes.
     fetch_key = (20, tuple(sorted(active_colors)))
     if "cal_result" not in st.session_state or refresh or st.session_state.get("cal_fetch_key") != fetch_key:
-        st.session_state.cal_result    = _fetch_cal_result()
-        st.session_state.cal_fetch_key = fetch_key
+        st.session_state.cal_result      = _fetch_cal_result()
+        st.session_state.cal_fetch_key   = fetch_key
+        st.session_state.cal_last_synced = datetime.datetime.now(datetime.timezone.utc).isoformat()
 
     result      = st.session_state.cal_result
     events      = result["events"]
     is_simulated = result["is_simulated"]
+    cal_sync_html = (
+        f'<div style="color:#8b949e;font-size:11px;margin-top:4px;">'
+        f'Last synced: {_fmt_sync_dt(st.session_state.get("cal_last_synced"))}</div>'
+    )
 
     # ── Connection status banner ─────────────────────────────────────────────
     if is_simulated:
@@ -690,6 +714,7 @@ full real calendar).
 <span style="color:#8b949e;font-size:12px;">Showing live events from your Google Calendar{conn_note}</span>
 """, unsafe_allow_html=True)
 
+    st.markdown(cal_sync_html, unsafe_allow_html=True)
     st.markdown("---")
 
     # Summary bar
@@ -780,8 +805,9 @@ full real calendar).
     gmail_fetch_key = (gmail_query,)
     if ("gmail_result" not in st.session_state or gmail_refresh
             or st.session_state.get("gmail_fetch_key") != gmail_fetch_key):
-        st.session_state.gmail_result    = gmail_helper.fetch_meetup_emails(query=gmail_query, max_results=10)
-        st.session_state.gmail_fetch_key = gmail_fetch_key
+        st.session_state.gmail_result      = gmail_helper.fetch_meetup_emails(query=gmail_query, max_results=10)
+        st.session_state.gmail_fetch_key   = gmail_fetch_key
+        st.session_state.gmail_last_synced = datetime.datetime.now(datetime.timezone.utc).isoformat()
 
     gmail_result = st.session_state.gmail_result
     gmail_emails = gmail_result["emails"]
@@ -824,6 +850,12 @@ full real calendar).
 <span style="color:#8b949e;font-size:12px;">Showing live Gmail search results</span>
 """, unsafe_allow_html=True)
 
+    st.markdown(
+        f'<div style="color:#8b949e;font-size:11px;margin-top:4px;">'
+        f'Last synced: {_fmt_sync_dt(st.session_state.get("gmail_last_synced"))}</div>',
+        unsafe_allow_html=True,
+    )
+
     if not gmail_emails:
         st.info("No matching emails found for this query.")
     else:
@@ -834,14 +866,14 @@ full real calendar).
             ) if em.get("link") else ""
             email_html = (
                 '<div class="nc-card">'
-                '<div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:8px;">'
-                '<div>'
+                '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;">'
+                '<div style="min-width:0;flex:1;">'
                 f'<div style="font-weight:600;color:#e6edf3;font-size:14px;">✉️ {em.get("subject", "No Subject")}</div>'
                 f'<div style="color:#8b949e;font-size:12px;margin-top:3px;">From: {em.get("sender", "Unknown")} '
                 f'&nbsp;·&nbsp; {em.get("date", "")}</div>'
                 f'<div style="margin-top:6px;font-style:italic;color:#c9d1d9;font-size:13px;">{em.get("snippet", "")}</div>'
                 '</div>'
-                f'<div style="padding-top:4px;">{link_html}</div>'
+                f'<div style="padding-top:4px;flex-shrink:0;">{link_html}</div>'
                 '</div>'
                 '</div>'
             )
@@ -869,11 +901,15 @@ full real calendar).
         )
 
         if feed.get("posts"):
+            posts_sorted = sorted(feed["posts"], key=lambda p: p.get("posted_at") or "", reverse=True)
             body_html = "".join(
-                f'<div style="margin-top:6px;font-size:13px;color:#c9d1d9;">{p["text"]}<br>'
-                f'<a href="{p["link"]}" target="_blank" style="font-size:11px;color:#58a6ff;'
+                '<div style="margin-top:8px;">'
+                + (f'<div style="font-size:11px;color:#8b949e;">🕐 {_fmt_sync_dt(p["posted_at"])}</div>'
+                   if p.get("posted_at") else '')
+                + f'<div style="font-size:13px;color:#c9d1d9;margin-top:2px;">{p["text"]}</div>'
+                + f'<a href="{p["link"]}" target="_blank" style="font-size:11px;color:#58a6ff;'
                 f'text-decoration:none;">🔗 Open post</a></div>'
-                for p in feed["posts"]
+                for p in posts_sorted
             )
         elif feed.get("headings"):
             body_html = "".join(
@@ -883,6 +919,10 @@ full real calendar).
         else:
             body_html = f'<div style="margin-top:6px;font-size:13px;color:#c9d1d9;">{feed.get("agenda", "")}</div>'
 
+        last_synced = _fmt_sync_dt(feed.get("last_synced_at"))
+        sync_html = (f'<div style="color:#8b949e;font-size:11px;margin-top:2px;">Last synced: {last_synced}</div>'
+                     if last_synced else "")
+
         st.markdown(f"""
 <div class="nc-card">
   <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
@@ -890,6 +930,7 @@ full real calendar).
     {status_html}
   </div>
   <div style="color:#8b949e;font-size:12px;margin-top:4px;">{feed.get('location','')}</div>
+  {sync_html}
   {body_html}
   <div style="margin-top:8px;"><a href="{feed.get('link','')}" target="_blank"
        style="font-size:11px;color:#58a6ff;text-decoration:none;">🔗 View source</a></div>
@@ -915,23 +956,31 @@ full real calendar).
             '<span class="badge" style="background:#f0883e22;color:#f0883e;border-color:#f0883e55;">🔌 OFFLINE</span>'
         )
         if feed.get("posts"):
+            posts_sorted = sorted(feed["posts"], key=lambda p: p.get("posted_at") or "", reverse=True)
             body_html = "".join(
-                f'<div style="margin-top:6px;font-size:13px;color:#c9d1d9;">{p["text"][:280]}'
-                f'{"…" if len(p["text"]) > 280 else ""}<br>'
+                '<div style="margin-top:8px;">'
+                + (f'<div style="font-size:11px;color:#8b949e;">🕐 {_fmt_sync_dt(p["posted_at"])}</div>'
+                   if p.get("posted_at") else '')
+                + f'<div style="font-size:13px;color:#c9d1d9;margin-top:2px;">{p["text"][:280]}'
+                f'{"…" if len(p["text"]) > 280 else ""}</div>'
                 + (f'<a href="{p["link"]}" target="_blank" style="font-size:11px;color:#58a6ff;'
                    f'text-decoration:none;">🔗 Open post</a>' if p.get("link") else "")
                 + '</div>'
-                for p in feed["posts"]
+                for p in posts_sorted
             )
         else:
             body_html = ('<div style="margin-top:6px;font-size:13px;color:#8b949e;font-style:italic;">'
                           'No public preview available right now — open the source directly.</div>')
+        last_synced = _fmt_sync_dt(feed.get("last_synced_at"))
+        sync_html = (f'<div style="color:#8b949e;font-size:11px;margin-top:2px;">Last synced: {last_synced}</div>'
+                     if last_synced else "")
         st.markdown(f"""
 <div class="nc-card">
   <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
     <div style="font-weight:600;color:#d2a8ff;font-size:14px;">{feed.get('icon','📡')} {feed.get('source','Unknown')}</div>
     {status_html}
   </div>
+  {sync_html}
   {body_html}
   <div style="margin-top:8px;"><a href="{feed.get('link','')}" target="_blank"
        style="font-size:11px;color:#58a6ff;text-decoration:none;">🔗 View source</a></div>
@@ -970,11 +1019,8 @@ with tab_tiktok:
 
     st.markdown("---")
 
-    tool_col1, tool_col2 = st.columns(2)
-
     # ── Tool 1: Product link -> Promo idea, script, shooting suggestions ────────
-    with tool_col1:
-        st.markdown("#### 🛍️ Product → Promo Generator")
+    with st.expander("🛍️ Product → Promo Generator", expanded=True):
         product_url = st.text_input(
             "Product link", placeholder="https://your-shop.com/product/...", key="tt_product_url",
         )
@@ -1007,8 +1053,7 @@ with tab_tiktok:
                 st.error(f"Couldn't generate promo: {promo_result.get('error')}")
 
     # ── Tool 2: TikTok video link -> performance critique ───────────────────────
-    with tool_col2:
-        st.markdown("#### 🎥 Video → Performance Critique")
+    with st.expander("🎥 Video → Performance Critique", expanded=True):
         video_url = st.text_input(
             "TikTok video link", placeholder="https://www.tiktok.com/@user/video/...", key="tt_video_url",
         )

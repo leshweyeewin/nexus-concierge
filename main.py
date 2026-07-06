@@ -65,7 +65,19 @@ def mask_credentials(text: str) -> str:
 # Custom subclass of McpToolset to enforce credential masking (guardrail)
 class MaskingMcpToolset(McpToolset):
     async def get_tools(self, readonly_context=None):
-        tools = await super().get_tools(readonly_context)
+        # MCP stdio session creation occasionally fails transiently (subprocess
+        # startup jitter, momentary resource contention) - ADK's graceful-error-
+        # handling swallows that into an empty tool list rather than retrying,
+        # which then leaves the agent calling a tool it was instructed to use
+        # but doesn't actually have. A failed attempt doesn't leave a cached
+        # session behind (mcp_session_manager only stores on success), so a
+        # retry gets a genuinely fresh connection attempt rather than repeating
+        # the same failure.
+        try:
+            tools = await super().get_tools(readonly_context)
+        except Exception:
+            await asyncio.sleep(1.0)
+            tools = await super().get_tools(readonly_context)
         for t in tools:
             original_run_async = t.run_async
             def make_wrapped_run(orig_run):

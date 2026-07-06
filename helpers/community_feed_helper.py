@@ -12,6 +12,7 @@ DevRelopsAgent sees in chat, without spinning up the MCP subprocess.
 import re
 import html
 import urllib.request
+from datetime import datetime, timezone
 
 _HEADERS = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
 
@@ -62,12 +63,27 @@ def _fetch_telegram_channel(channel: str, feed_info: dict, num_posts: int = 2) -
             r'<div class="tgme_widget_message_text[^"]*"[^>]*>(.*?)</div>',
             page_html, re.DOTALL,
         )
+        # Each message's <time datetime="..."> footer appears after its own data-post
+        # attribute and before the next message's — non-greedy DOTALL matching on
+        # data-post -> next <time> reliably pairs each post with its own timestamp.
+        post_dates = dict(re.findall(
+            r'data-post="([^"]+)"[^>]*>.*?<time datetime="([^"]+)"',
+            page_html, re.DOTALL,
+        ))
         if posts_with_ids:
             clean_posts = []
-            for post_id, p in posts_with_ids[-num_posts:]:
+            for post_id, p in posts_with_ids:
                 p_clean = html.unescape(re.sub(r"<[^>]+>", "", p)).strip()
-                clean_posts.append({"text": p_clean, "link": f"https://t.me/{post_id}"})
-            feed_info["posts"] = clean_posts
+                clean_posts.append({
+                    "text": p_clean,
+                    "link": f"https://t.me/{post_id}",
+                    "posted_at": post_dates.get(post_id),
+                })
+            # Sort by actual post timestamp (ISO 8601 strings sort chronologically),
+            # latest first — posts with no parsed timestamp sort last instead of
+            # breaking the comparison.
+            clean_posts.sort(key=lambda post: post["posted_at"] or "", reverse=True)
+            feed_info["posts"] = clean_posts[:num_posts]
             feed_info["live_status"] = "live"
         else:
             feed_info["live_status"] = "offline"
@@ -75,6 +91,7 @@ def _fetch_telegram_channel(channel: str, feed_info: dict, num_posts: int = 2) -
     except Exception as e:
         feed_info["live_status"] = "offline"
         feed_info["error"] = str(e)
+    feed_info["last_synced_at"] = datetime.now(timezone.utc).isoformat()
     return feed_info
 
 

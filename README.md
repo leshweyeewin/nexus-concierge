@@ -1,5 +1,9 @@
 # NexusConcierge — Cross-Domain Multi-Agent Life Engine
 
+*Kaggle AI Agents: Intensive Vibe Coding Capstone Project*
+
+🔗 **Live Demo:** [nexus-concierge.onrender.com](https://nexus-concierge.onrender.com/) (Hosted on Render's free tier — if the instance has spun down from inactivity, the first request can take ~30-60 seconds to wake up before the page loads.)
+
 NexusConcierge is a conditional **Workflow DAG Graph** built on the Google Agent Development Kit (`google-adk`). It coordinates three daily workflows into one session state: 
 - Singapore developer networking events
 - TikTok affiliate marketing hook generation, and
