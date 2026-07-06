@@ -138,6 +138,15 @@ def route_task(sub_agent: str, tool_context: ToolContext) -> str:
     Pass 'tiktok' for TikTok trend metrics, affiliate products, script hooks.
     """
     tool_context.actions.route = sub_agent
+    # `actions.route` only tells the Workflow which graph edge to take AFTER this
+    # node's turn ends — it does NOT end the turn itself. Without skip_summarization,
+    # ADK's LlmAgent step-loop keeps calling Gemini in this same orchestrator node
+    # (nothing about setting `.route` stops it), so the specialist node is never
+    # actually scheduled and the orchestrator just keeps re-deciding forever. Setting
+    # skip_summarization=True (the same mechanism ADK's own exit_loop_tool uses) makes
+    # this function response the terminal event for the turn, so NodeRunner reads the
+    # route immediately and the Workflow really does hand off to the specialist.
+    tool_context.actions.skip_summarization = True
     # NOTE: route_task and finish_delegation can run as sibling parallel function
     # calls within the SAME model turn (ADK executes them as concurrent asyncio
     # tasks, each with its OWN ToolContext instance) — a plain attribute set here
@@ -158,6 +167,10 @@ def finish_delegation(consolidated_text: str, tool_context: ToolContext) -> str:
     # instead of real data. If a specialist was just routed to but hasn't actually run
     # yet, force the real handoff instead of finalizing.
     pending = tool_context.state.get("_pending_route")
+    # Same fix as route_task: force this turn to end right here so the forced
+    # handoff to `pending` (or the real "final" route) actually takes effect instead
+    # of letting the model see the result and keep retrying in the same node forever.
+    tool_context.actions.skip_summarization = True
     if pending:
         tool_context.actions.route = pending
         return (f"ERROR: Cannot finish yet — '{pending}' has not actually returned data. "
