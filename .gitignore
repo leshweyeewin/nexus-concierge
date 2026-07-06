@@ -9,3 +9,7 @@ token*.json
 
 # Streamlit local secrets (if ever used) - never commit these
 .streamlit/secrets.toml
+
+# Local-only writeup drafts - scrubbed from history, kept locally only
+kaggle_writeup.md
+walkthrough.md
