@@ -292,6 +292,11 @@ dev_model, dev_instruction = get_agent_config(
     "DevRelopsAgent",
     "gemini-3.1-flash-lite",
     (
+        "HARD RULE ON SCOPE: You will often see the user's full original request, which may mention other domains "
+        "(market/stock prices, trading, TikTok/affiliate content) alongside developer events. You MUST NOT answer those "
+        "other parts — do not fetch, estimate, or fabricate a stock price, trading data, or a TikTok/marketing hook, even "
+        "briefly or as a bonus suggestion. Another specialist with its own tools will be routed to separately for those "
+        "parts. Your response must cover ONLY developer events/calendar/networking, and nothing else.\n\n"
         "You are a master technical networker in Singapore. You scan dev events around town. "
         "You use the fetch_dev_event_feeds tool to pull live agendas from Telegram, Meetup, GeeksHacking, STACK, and Google Developer Space. "
         "You also manage the user's schedule using the list_google_calendar_events and create_google_calendar_event tools, "
@@ -304,13 +309,22 @@ dev_agent = Agent(
     model=dev_model,
     instruction=dev_instruction,
     tools=[events_toolset, manage_event_profiles, match_speaker_to_interests],
-    after_agent_callback=_clear_pending_route
+    after_agent_callback=_clear_pending_route,
+    # See orchestrator's include_contents comment: without this, a specialist handed
+    # control via route_task only sees the bare routing tool-call/response pair, not
+    # the user's actual request, and has no idea what it's supposed to look up.
+    include_contents="default"
 )
 
 tiktok_model, tiktok_instruction = get_agent_config(
     "CreativeAffiliateAgent",
     "gemini-3.1-flash-lite",
     (
+        "HARD RULE ON SCOPE: You will often see the user's full original request, which may mention other domains "
+        "(developer events, calendar, market/stock prices) alongside TikTok/content requests. You MUST NOT answer those "
+        "other parts — do not fetch, estimate, or fabricate developer events, calendar items, or a stock price, even "
+        "briefly or as a bonus suggestion. Another specialist with its own tools will be routed to separately for those "
+        "parts. Your response must cover ONLY the TikTok/content-hook part, and nothing else.\n\n"
         "You are the Creative Copywriter Agent. Generate creative hooks and TikTok scripts based on trending "
         "hashtags, keyword performance, and product datasets. Sourced from the TikTok App, Gmail, and the Telegram "
         "groups: 'TTS Beauty Creator Community', 'Tiktok Shop SG New Creators', 'Tiktok Shop SG Affiliate Creator Community', "
@@ -323,13 +337,19 @@ tiktok_agent = Agent(
     model=tiktok_model,
     instruction=tiktok_instruction,
     tools=[tiktok_toolset, manage_style_memory],
-    after_agent_callback=_clear_pending_route
+    after_agent_callback=_clear_pending_route,
+    include_contents="default"
 )
 
 trading_model, trading_instruction = get_agent_config(
     "QuantitativeRiskAgent",
     "gemini-3.1-flash-lite",
     (
+        "HARD RULE ON SCOPE: You will often see the user's full original request, which may mention other domains "
+        "(developer events, calendar, TikTok/affiliate content) alongside market/trading requests. You MUST NOT answer "
+        "those other parts — do not fetch, estimate, or fabricate developer events, calendar items, or a TikTok/marketing "
+        "hook, even briefly or as a bonus suggestion. Another specialist with its own tools will be routed to separately "
+        "for those parts. Your response must cover ONLY market/trading data, and nothing else.\n\n"
         "You are the Quantitative Risk Agent. You use the get_live_price tool to fetch price feeds, "
         "get_options_chain to analyze Options chains, and get_moomoo_tiger_indicators for MooMoo/Tiger sentiment indicators.\n"
         "HARD RULE ON PRICE FRESHNESS: get_live_price may return a JSON payload with \"stale\": true when the live feed "
@@ -349,7 +369,8 @@ trading_agent = Agent(
     model=trading_model,
     instruction=trading_instruction,
     tools=[market_toolset, get_trading_rules, check_risk_setup],
-    after_agent_callback=_clear_pending_route
+    after_agent_callback=_clear_pending_route,
+    include_contents="default"
 )
 
 orch_model = "gemini-3.1-flash-lite"
@@ -375,6 +396,11 @@ orch_instruction = (
     "specialist's actual results yet (only a routing acknowledgement), wait — do not guess, fabricate, or write a "
     "placeholder like 'please stand by' into `consolidated_text`. `consolidated_text` must always be built only from "
     "real data/results actually returned by the specialists.\n\n"
+    "HARD RULE ON DOMAIN AUTHORITY: Each specialist is only authoritative for its own domain ('dev' for events/calendar, "
+    "'trading' for market data, 'tiktok' for content hooks). If a specialist's reply includes commentary, guesses, or a "
+    "hook/price/event about a domain outside its own, that content is NOT authoritative and does not satisfy that part of "
+    "the user's request — ignore it and still call `route_task` to the correct specialist for that domain before finishing. "
+    "Only treat a domain as answered once its OWN matching specialist has actually responded.\n\n"
     "HARD RULE ON FINISHING: As soon as a specialist's response already answers what the user asked for (and no other specialists "
     "are needed for other parts of the query), you MUST call `finish_delegation` with that data in the SAME turn you review it — "
     "do not end your turn by asking the user an open-ended follow-up question or offering a menu of next steps instead. "
@@ -392,7 +418,14 @@ orchestrator = Agent(
     name="NexusOrchestrator",
     model=orch_model,
     instruction=orch_instruction,
-    tools=[route_task, finish_delegation, manage_calendar_lock, get_daily_briefing]
+    tools=[route_task, finish_delegation, manage_calendar_lock, get_daily_briefing],
+    # Running as a Workflow node defaults single_turn agents to include_contents='none'
+    # (current-turn-only context) unless explicitly overridden. For the orchestrator that
+    # means every time control returns to it after a specialist hands back, it would only
+    # see that specialist's reply — with no memory of the original multi-part request or
+    # which other specialists still haven't run. Forcing 'default' keeps full conversation
+    # history so it can track what's left to do across sequential route_task hops.
+    include_contents="default"
 )
 
 # =====================================================================
