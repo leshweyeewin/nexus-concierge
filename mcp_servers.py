@@ -451,13 +451,29 @@ elif args.server == "market":
         ticker = ticker.upper()
         try:
             t = yf.Ticker(ticker)
-            info = t.fast_info
             hist = t.history(period="5d")
 
             if hist.empty:
                 return json.dumps({"error": f"No historical pricing data found for ticker '{ticker}'"})
 
-            current_price = info.last_price if hasattr(info, 'last_price') and info.last_price else hist['Close'].iloc[-1]
+            # fast_info.last_price silently falls back to the last daily close when the
+            # market is closed or Yahoo's real-time feed doesn't respond, but reports it
+            # identically to a genuine live tick — with no way to tell the two apart. Pull
+            # the 1-minute intraday bar instead: its own timestamp tells us exactly how
+            # fresh the quote actually is, so that can be surfaced honestly instead of
+            # implied. If markets are closed (no intraday bars for today), fall back to
+            # the last daily close and label it as such rather than as a live price.
+            intraday = t.history(period="1d", interval="1m")
+            if not intraday.empty:
+                current_price = intraday['Close'].iloc[-1]
+                quote_time = intraday.index[-1]
+                is_intraday_quote = True
+            else:
+                current_price = hist['Close'].iloc[-1]
+                quote_time = hist.index[-1]
+                is_intraday_quote = False
+            quote_as_of = quote_time.to_pydatetime().astimezone(timezone.utc).isoformat()
+
             prev_close = hist['Close'].iloc[-2] if len(hist) > 1 else current_price
             change_pct = ((current_price / prev_close) - 1) * 100 if prev_close else 0.0
 
@@ -476,9 +492,11 @@ elif args.server == "market":
                 "ticker": ticker,
                 "price": round(current_price, 2),
                 "change_24h": f"{change_pct:+.2f}%",
-                "volume": int(info.last_volume) if hasattr(info, 'last_volume') and info.last_volume else None,
+                "volume": int(intraday['Volume'].sum()) if is_intraday_quote and not intraday.empty else (int(hist['Volume'].iloc[-1]) if not hist.empty else None),
                 "rsi_14": round(float(rsi_val), 1),
-                "macd": "Bullish crossovers" if change_pct > 0 else "Neutral consolidation"
+                "macd": "Bullish crossovers" if change_pct > 0 else "Neutral consolidation",
+                "quote_as_of": quote_as_of,
+                "is_intraday_quote": is_intraday_quote
             }
             return _fresh_or_stale(f"price:{ticker}", data)
         except Exception as e:

@@ -131,6 +131,24 @@ market_toolset = MaskingMcpToolset(
 # =====================================================================
 
 # --- Loop/Routing Tools ---
+# Keyword heuristic backstop for the "HARD RULE ON DOMAIN AUTHORITY" prompt instruction.
+# gemini-3.1-flash-lite doesn't reliably obey that instruction (observed: it let a
+# specialist's own off-topic aside about tiktok/hooks stand in for actually routing to
+# the tiktok specialist). Prompting alone isn't enough, so finish_delegation additionally
+# checks the ORIGINAL user request for domain keywords and refuses to finish if a
+# mentioned domain was never actually routed to in this turn.
+_DOMAIN_KEYWORDS = {
+    "dev": ("dev event", "developer event", "meetup", "meet-up", "calendar", "networking",
+            "conference", "hackathon", "workshop"),
+    "trading": ("price", "stock", "ticker", "trading", "market", "shares", "portfolio",
+                "options", "risk", "invest"),
+    "tiktok": ("tiktok", "hook", "affiliate", "script", "caption", "content"),
+}
+
+def _mentioned_domains(text: str) -> set[str]:
+    lowered = text.lower()
+    return {domain for domain, kws in _DOMAIN_KEYWORDS.items() if any(kw in lowered for kw in kws)}
+
 def route_task(sub_agent: str, tool_context: ToolContext) -> str:
     """Routes execution to a specialized sub-agent for the next step.
     Pass 'dev' for local code files, repos, speaker matching, developer profiling.
@@ -175,6 +193,22 @@ def finish_delegation(consolidated_text: str, tool_context: ToolContext) -> str:
         tool_context.actions.route = pending
         return (f"ERROR: Cannot finish yet — '{pending}' has not actually returned data. "
                 f"Forcing handoff to '{pending}' now. Wait for its real response before calling finish_delegation again.")
+
+    # Deterministic backstop for HARD RULE ON DOMAIN AUTHORITY: don't trust the model to
+    # have actually routed everywhere the original request needed just because it says so.
+    visited = set(tool_context.state.get("_visited_domains") or [])
+    oc = tool_context.get_invocation_context()
+    original_text = ""
+    if oc.user_content and oc.user_content.parts:
+        original_text = "".join(p.text for p in oc.user_content.parts if p.text)
+    missing = sorted(_mentioned_domains(original_text) - visited)
+    if missing:
+        target = missing[0]
+        tool_context.state["_pending_route"] = target
+        tool_context.actions.route = target
+        return (f"ERROR: Cannot finish yet — the original request also asked about '{target}', which hasn't been "
+                f"routed to yet. Forcing handoff to '{target}' now.")
+
     tool_context.state["final_response"] = consolidated_text
     tool_context.actions.route = "final"
     return "Finalizing delegation and compiling response."
@@ -183,9 +217,30 @@ def _clear_pending_route(callback_context):
     """Runs after a specialist agent's node genuinely finishes its turn.
     Clears the '_pending_route' flag set by route_task so a later, legitimate
     finish_delegation call (after this specialist has actually returned data)
-    isn't mistaken for the same race it was guarding against.
+    isn't mistaken for the same race it was guarding against. Also records the
+    domain as genuinely visited for finish_delegation's completeness check.
     """
+    pending = callback_context.state.get("_pending_route")
+    if pending:
+        visited = list(callback_context.state.get("_visited_domains") or [])
+        if pending not in visited:
+            visited.append(pending)
+        callback_context.state["_visited_domains"] = visited
     callback_context.state["_pending_route"] = None
+
+def _reset_turn_tracking(callback_context):
+    """Runs before the orchestrator's node starts. `_visited_domains` must reset once
+    per NEW user turn, but the orchestrator is re-entered multiple times within a single
+    turn (once per route_task hop) — resetting on every entry would wipe progress from
+    earlier hops in the same turn. invocation_id is stable across all hops of one turn
+    and changes on the next, so it's used to detect "is this actually a new turn."
+    """
+    state = callback_context.state
+    current_invocation = callback_context.invocation_id
+    if state.get("_turn_invocation_id") != current_invocation:
+        state["_turn_invocation_id"] = current_invocation
+        state["_visited_domains"] = []
+        state["_pending_route"] = None
 
 # --- Orchestrator Tools ---
 def manage_calendar_lock(action: str, event_name: str, tool_context: ToolContext) -> str:
@@ -354,7 +409,10 @@ trading_model, trading_instruction = get_agent_config(
         "get_options_chain to analyze Options chains, and get_moomoo_tiger_indicators for MooMoo/Tiger sentiment indicators.\n"
         "HARD RULE ON PRICE FRESHNESS: get_live_price may return a JSON payload with \"stale\": true when the live feed "
         "is unavailable and a cached value is being served instead. Never present a stale price as current — always check "
-        "for the \"stale\" field and, if present, explicitly tell the user the price is stale and quote the \"as_of\" timestamp.\n"
+        "for the \"stale\" field and, if present, explicitly tell the user the price is stale and quote the \"as_of\" timestamp. "
+        "Separately, every response also includes \"is_intraday_quote\" and \"quote_as_of\": if \"is_intraday_quote\" is "
+        "false, the price is the last daily close (market closed or no real-time tick available), NOT a live price — you "
+        "MUST tell the user this explicitly (e.g. 'as of last close on <date>') instead of presenting it as current.\n"
         "HARD RULE ON RISK CHECKS: Whenever the user proposes or asks about a trade setup with an entry price and stop-loss "
         "(or you have both values), you MUST call the check_risk_setup tool to validate it against the immutable risk "
         "thresholds — never estimate or eyeball the percentage-loss/threshold comparison yourself. Relay the tool's verdict "
@@ -425,7 +483,8 @@ orchestrator = Agent(
     # see that specialist's reply — with no memory of the original multi-part request or
     # which other specialists still haven't run. Forcing 'default' keeps full conversation
     # history so it can track what's left to do across sequential route_task hops.
-    include_contents="default"
+    include_contents="default",
+    before_agent_callback=_reset_turn_tracking
 )
 
 # =====================================================================
